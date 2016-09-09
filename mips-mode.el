@@ -107,7 +107,7 @@
      ;; special characters
      (":\\|,\\|;\\|{\\|}\\|=>\\|@\\|\\$\\|=" . font-lock-builtin-face))))
 
-(defcustom mips-tab-width 2
+(defcustom mips-tab-width tab-width
   "Width of a tab for MIPS mode"
   :tag "Tab width"
   :type 'integer)
