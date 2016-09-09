@@ -5,8 +5,8 @@
 ;; Author: Henrik Lissner <http://github/hlissner>
 ;; Maintainer: Henrik Lissner <henrik@lissner.net>
 ;; Created: September 8, 2016
-;; Modified: September 8, 2016
-;; Version: 1.0.0
+;; Modified: September 9, 2016
+;; Version: 1.0.1
 ;; Keywords: mips assembly
 ;; Homepage: https://github.com/hlissner/emacs-mips-mode
 ;;
@@ -14,7 +14,7 @@
 ;;
 ;;; Commentary:
 ;;
-;; An Emacs major mode for MIPS Assembly based off [haxor-mode]. Written for the
+;; An Emacs major mode for MIPS Assembly based off haxor-mode. Written for the
 ;; MIPS Assembly track on exercism.io.
 ;;
 ;;; Code:
