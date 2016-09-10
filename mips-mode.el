@@ -14,9 +14,7 @@
 ;;
 ;;; Commentary:
 ;;
-<<<<<<< HEAD
 ;; A major mode for MIPS Assembly based off [haxor-mode]. Written for the
->>>>>>> 4c49ea8683e037d897cb0ba8008e4a355b08e133
 ;; MIPS Assembly track on exercism.io.
 ;;
 ;;; Code:
