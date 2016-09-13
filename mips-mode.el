@@ -34,6 +34,7 @@
     "divu"
     "mfhi"
     "mflo"
+    "mul"
     ;;
     "and"
     "or"
