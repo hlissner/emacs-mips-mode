@@ -19,7 +19,7 @@
 ;;
 ;;; Code:
 
-(defvar mips-keywords
+(defconst mips-keywords
   '(;; instructions
     "add"
     "sub"
@@ -114,7 +114,7 @@
     "c.lt.d"
     ))
 
-(defvar mips-defs
+(defconst mips-defs
   '(".align"
     ".ascii"
     ".asciiz"
