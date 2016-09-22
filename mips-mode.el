@@ -143,7 +143,7 @@
      ("[sl]wc[1-9]" . font-lock-keyword-face)
      (,(regexp-opt mips-defs 'words) . font-lock-preprocessor-face)
      ;; registers
-     ("$\\([0-9]\\|[0-2][0-9]\\|3[01]\\|[vk][01]\\|a[0-3]\\|[ts][0-7]\\|t[89]\\|[gsf]p\\|ra\\|at\\|zero\\|f[1-9]\\|f[1-3][0-9]\\)" . font-lock-type-face)
+     ("$\\(f?[0-2][0-9]\\|f?3[01]\\|[ft]?[0-9]\\|[vk][01]\\|a[0-3]\\|s[0-7]\\|[gsf]p\\|ra\\|at\\|zero\\)" . font-lock-type-face)
      ;; ("$\\([a-z0-9]\\{2\\}\\|zero\\)" . font-lock-constant-face)
      ;; special characters
      (":\\|,\\|;\\|{\\|}\\|=>\\|@\\|\\$\\|=" . font-lock-builtin-face))))
