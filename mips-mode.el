@@ -19,6 +19,13 @@
 ;;
 ;;; Code:
 
+(defgroup mips nil
+  "Major mode for editing MIPS assembly"
+  :prefix "mips-"
+  :group languages
+  :link '(url-link :tag "Github" "https://github.com/hlissner/emacs-mips-mode")
+  :link '(emacs-commentary-link :tag "Commentary" "ng2-mode"))
+
 (defconst mips-keywords
   '(;; instructions
     "add"
@@ -151,6 +158,7 @@
 (defcustom mips-tab-width tab-width
   "Width of a tab for MIPS mode"
   :tag "Tab width"
+  :group 'mips
   :type 'integer)
 
 (defvar mips-map
