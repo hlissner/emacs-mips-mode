@@ -153,15 +153,54 @@
   :tag "Tab width"
   :type 'integer)
 
+(defvar mips-map
+  (let ((map (make-keymap)))
+    (define-key map (kbd "<backtab>") 'mips-dedent)
+    map)
+  "Keymap for mips-mode")
+
+(defun mips--get-indent-level (&optional line)
+  "Returns the number of spaces indenting the last label."
+  (interactive)
+  (- (save-excursion
+       (goto-line (or line (line-number-at-pos)))
+       (back-to-indentation)
+       (current-column))
+     (save-excursion
+       (goto-line (or line (line-number-at-pos)))
+       (beginning-of-line)
+       (current-column))))
+
+(defun mips--last-label-line ()
+  "Returns the line of the last label"
+  (save-excursion
+    (previous-line)
+    (end-of-line)
+    (re-search-backward "^[ \t]*\\w+:")
+    (line-number-at-pos)))
+
+(defun mips-indent ()
+  (interactive)
+  (indent-line-to (+ mips-tab-width
+                     (mips--get-indent-level (mips--last-label-line)))))
+
+(defun mips-dedent ()
+  (interactive)
+  (indent-line-to (- (mips--get-indent-level) mips-tab-width)))
+
 ;;;###autoload
 (define-derived-mode mips-mode prog-mode "MIPS Assembly"
   "Major mode for editing MIPS assembler code."
+
   (setq font-lock-defaults mips-font-lock-defaults)
   (when mips-tab-width
     (setq tab-width mips-tab-width))
 
   (setq comment-start "#")
   (setq comment-end "")
+
+  (use-local-map mips-map)
+  (setq indent-line-function 'mips-indent)
 
   (modify-syntax-entry ?# "< b" mips-mode-syntax-table)
   (modify-syntax-entry ?\n "> b" mips-mode-syntax-table))
