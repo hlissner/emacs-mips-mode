@@ -115,9 +115,21 @@
     ))
 
 (defvar mips-defs
-  '("text"
-    "globl"
-    "asciiz"))
+  '(".align"
+    ".ascii"
+    ".asciiz"
+    ".byte"
+    ".data"
+    ".double"
+    ".extern"
+    ".float"
+    ".globl"
+    ".half"
+    ".kdata"
+    ".ktext"
+    ".space"
+    ".text"
+    ".word"))
 
 (defconst mips-font-lock-defaults
   `((;; numbers
