@@ -5,8 +5,8 @@
 ;; Author: Henrik Lissner <http://github/hlissner>
 ;; Maintainer: Henrik Lissner <henrik@lissner.net>
 ;; Created: September 8, 2016
-;; Modified: September 9, 2016
-;; Version: 1.0.1
+;; Modified: September 22, 2016
+;; Version: 1.1.0
 ;; Keywords: mips assembly
 ;; Homepage: https://github.com/hlissner/emacs-mips-mode
 ;;
@@ -15,14 +15,15 @@
 ;;; Commentary:
 ;;
 ;; A major mode for MIPS Assembly based off [haxor-mode]. Written for the
-;; MIPS Assembly track on exercism.io.
+;; MIPS Assembly track on exercism.io. A MIPS interpreter such as spim
+;; must be installed for the code evaluation features.
 ;;
 ;;; Code:
 
 (defgroup mips nil
   "Major mode for editing MIPS assembly"
   :prefix "mips-"
-  :group languages
+  :group 'languages
   :link '(url-link :tag "Github" "https://github.com/hlissner/emacs-mips-mode")
   :link '(emacs-commentary-link :tag "Commentary" "ng2-mode"))
 
@@ -161,11 +162,27 @@
   :group 'mips
   :type 'integer)
 
+(defcustom mips-interpreter "spim"
+  "Interpreter to run mips code in"
+  :tag "MIPS Interpreter"
+  :group 'mips
+  :type 'string)
+
 (defvar mips-map
   (let ((map (make-keymap)))
     (define-key map (kbd "<backtab>") 'mips-dedent)
+    (define-key map (kbd "C-c C-c") 'mips-run-buffer)
+    (define-key map (kbd "C-c C-r") 'mips-run-region)
     map)
   "Keymap for mips-mode")
+
+(defun mips--interpreter-buffer-name ()
+  "Return a buffer name for the preferred mips interpreter"
+  (format "*%s*" mips-interpreter))
+
+(defun mips--interpreter-file-arg ()
+  "Return the appropriate argument to accept a file for the current mips interpreter"
+  (cond ((equal mips-interpreter "spim") "-file")))
 
 (defun mips--get-indent-level (&optional line)
   "Returns the number of spaces indenting the last label."
@@ -195,6 +212,37 @@
 (defun mips-dedent ()
   (interactive)
   (indent-line-to (- (mips--get-indent-level) mips-tab-width)))
+
+(defun mips-run-buffer ()
+  "Run the current buffer in a mips interpreter, and display the output in another window"
+  (interactive)
+  (let ((tmp-file (format "/tmp/mips-%s" (file-name-base))))
+    (write-region (point-min) (point-max) tmp-file nil nil nil nil)
+    (mips-run-file tmp-file)
+    (delete-file tmp-file)))
+
+(defun mips-run-region ()
+  "Run the current region in a mips interpreter, and display the output in another window"
+  (interactive)
+  (let ((tmp-file (format "/tmp/mips-%s" (file-name-base))))
+    (write-region (region-beginning) (region-end) tmp-file nil nil nil nil)
+    (mips-run-file tmp-file)
+    (delete-file tmp-file)))
+
+(defun mips-run-file (&optional filename)
+  "Run the file in a mips interpreter, and display the output in another window.
+The interpreter will open filename. If filename is nil, it will open the current
+buffer's file"
+  (interactive)
+  (let ((file (or filename (buffer-file-name))))
+    (when (buffer-live-p (get-buffer (mips--interpreter-buffer-name)))
+      (kill-buffer (mips--interpreter-buffer-name)))
+    (start-process mips-interpreter
+                   (mips--interpreter-buffer-name)
+                   mips-interpreter (mips--interpreter-file-arg) file))
+  (switch-to-buffer-other-window (mips--interpreter-buffer-name))
+  (read-only-mode t)
+  (help-mode))
 
 ;;;###autoload
 (define-derived-mode mips-mode prog-mode "MIPS Assembly"
