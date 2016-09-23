@@ -149,7 +149,7 @@
      (,(regexp-opt mips-keywords 'words) . font-lock-keyword-face)
      ;; coprocessor load-store instructions
      ("[sl]wc[1-9]" . font-lock-keyword-face)
-     (,(regexp-opt mips-defs 'words) . font-lock-preprocessor-face)
+     (,(regexp-opt mips-defs) . font-lock-preprocessor-face)
      ;; registers
      ("$\\(f?[0-2][0-9]\\|f?3[01]\\|[ft]?[0-9]\\|[vk][01]\\|a[0-3]\\|s[0-7]\\|[gsf]p\\|ra\\|at\\|zero\\)" . font-lock-type-face)
      ;; ("$\\([a-z0-9]\\{2\\}\\|zero\\)" . font-lock-constant-face)
