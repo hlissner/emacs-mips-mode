@@ -219,6 +219,7 @@
     (define-key map (kbd "<backtab>") 'mips-dedent)
     (define-key map (kbd "C-c C-c") 'mips-run-buffer)
     (define-key map (kbd "C-c C-r") 'mips-run-region)
+    (define-key map (kbd "C-c C-l") 'mips-goto-label-at-cursor)
     map)
   "Keymap for mips-mode")
 
@@ -289,6 +290,16 @@ buffer's file"
   (switch-to-buffer-other-window (mips--interpreter-buffer-name))
   (read-only-mode t)
   (help-mode))
+
+(defun mips-goto-label (&optional label)
+  (interactive)
+  (let ((label (or label (read-minibuffer "Go to Label: "))))
+    (beginning-of-buffer)
+    (re-search-forward (format "[ \t]*%s:" label))))
+
+(defun mips-goto-label-at-cursor ()
+  (interactive)
+  (mips-goto-label (symbol-at-point)))
 
 ;;;###autoload
 (define-derived-mode mips-mode prog-mode "MIPS Assembly"
