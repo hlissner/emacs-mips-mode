@@ -28,14 +28,14 @@
   :link '(emacs-commentary-link :tag "Commentary" "ng2-mode"))
 
 (defconst mips-keywords
-  '(;; instructions
+  '(;; Arithmetic insturctions
     "add"
     "sub"
     "addi"
     "addu"
     "subu"
     "addiu"
-    ;;
+    ;; Multiplication/division
     "mult"
     "div"
     "rem"
@@ -44,7 +44,7 @@
     "mfhi"
     "mflo"
     "mul"
-    ;;
+    ;; Bitwise operations
     "not"
     "and"
     "or"
@@ -53,19 +53,19 @@
     "andi"
     "ori"
     "xori"
-    ;;
+    ;; Shifts
     "sll"
     "srl"
     "sra"
     "sllv"
     "srlv"
     "srav"
-    ;;
+    ;; Comparisons
     "slt"
     "sltu"
     "slti"
     "sltiu"
-    ;;
+    ;; Jump/branch
     "j"
     "jal"
     "jr"
@@ -73,7 +73,7 @@
     "beq"
     "bne"
     "syscall"
-    ;;
+    ;; Load/store
     "lui"
     "lb"
     "lbu"
@@ -83,17 +83,34 @@
     "sb"
     "sh"
     "sw"
-    ;;
+    ;; Concurrent load/store
     "ll"
     "sc"
-
-    ;; pseudo instructions;
+    ;; Trap handling
+    "break"
+    "teq"
+    "teqi"
+    "tge"
+    "tgei"
+    "tgeu"
+    "tgeiu"
+    "tlt"
+    "tlti"
+    "tltu"
+    "tltiu"
+    "tne"
+    "tnei"
+    ;; Pseudoinstructions
     "b"
     "bal"
     "bge"
     "bgt"
     "ble"
     "blt"
+    "bgeu"
+    "bleu"
+    "bltu"
+    "bgtu"
     "bgez"
     "blez"
     "bgtz"
@@ -108,18 +125,47 @@
     "move"
     "nop"
     "clear"
-
-    ;; floating point instuctions
+    ;; Deprecated branch-hint pseudoinstructions
+    "beql"
+    "bnel"
+    "bgtzl"
+    "bgezl"
+    "bltzl"
+    "blezl"
+    "bltzall"
+    "bgezall"
+    ;; Floating point instuctions
+    ;; Arithmetic
     "add.s"
-    "sub.s"
-    "mul.s"
-    "div.s"
     "add.d"
+    "sub.s"
     "sub.d"
+    "mul.s"
     "mul.d"
+    "div.s"
     "div.d"
+    ;; Comparison
     "c.lt.s"
     "c.lt.d"
+    "c.gt.s"
+    "c.gt.d"
+    "madd.s"
+    "madd.d"
+    "msub.s"
+    "msub.d"
+    "movt.s"
+    "movt.d"
+    "movn.s"
+    "movn.d"
+    "movz.s"
+    "movz.d"
+    "trunc.w.d"
+    "trunc.w.s"
+    ;; Math
+    "abs.s"
+    "abs.d"
+    "sqrt.s"
+    "sqrt.d"
     ))
 
 (defconst mips-defs
