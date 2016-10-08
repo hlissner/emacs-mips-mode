@@ -28,14 +28,14 @@
   :link '(emacs-commentary-link :tag "Commentary" "ng2-mode"))
 
 (defconst mips-keywords
-  '(;; instructions
+  '(;; Arithmetic insturctions
     "add"
     "sub"
     "addi"
     "addu"
     "subu"
     "addiu"
-    ;;
+    ;; Multiplication/division
     "mult"
     "div"
     "rem"
@@ -44,7 +44,10 @@
     "mfhi"
     "mflo"
     "mul"
-    ;;
+    "mulu"
+    "mulo"
+    "mulou"
+    ;; Bitwise operations
     "not"
     "and"
     "or"
@@ -53,19 +56,25 @@
     "andi"
     "ori"
     "xori"
-    ;;
+    ;; Shifts
     "sll"
     "srl"
     "sra"
     "sllv"
     "srlv"
     "srav"
-    ;;
+    ;; Comparisons
+    "seq"
+    "sne"
+    "sgt"
+    "sgtu"
+    "sge"
+    "sgeu"
     "slt"
     "sltu"
     "slti"
     "sltiu"
-    ;;
+    ;; Jump/branch
     "j"
     "jal"
     "jr"
@@ -73,27 +82,49 @@
     "beq"
     "bne"
     "syscall"
-    ;;
+    ;; Load/store
     "lui"
     "lb"
     "lbu"
     "lh"
     "lhu"
     "lw"
+    "lwl"
+    "lwr"
     "sb"
     "sh"
     "sw"
-    ;;
+    "swl"
+    "swr"
+    ;; Concurrent load/store
     "ll"
     "sc"
-
-    ;; pseudo instructions;
+    ;; Trap handling
+    "break"
+    "teq"
+    "teqi"
+    "tge"
+    "tgei"
+    "tgeu"
+    "tgeiu"
+    "tlt"
+    "tlti"
+    "tltu"
+    "tltiu"
+    "tne"
+    "tnei"
+    "rfe"
+    ;; Pseudoinstructions
     "b"
     "bal"
     "bge"
     "bgt"
     "ble"
     "blt"
+    "bgeu"
+    "bleu"
+    "bltu"
+    "bgtu"
     "bgez"
     "blez"
     "bgtz"
@@ -106,20 +137,59 @@
     "la"
     "li"
     "move"
+    "movz"
+    "movn"
     "nop"
     "clear"
-
-    ;; floating point instuctions
+    ;; Deprecated branch-hint pseudoinstructions
+    "beql"
+    "bnel"
+    "bgtzl"
+    "bgezl"
+    "bltzl"
+    "blezl"
+    "bltzall"
+    "bgezall"
+    ;; Floating point instuctions
+    ;; Arithmetic
     "add.s"
-    "sub.s"
-    "mul.s"
-    "div.s"
     "add.d"
+    "sub.s"
     "sub.d"
+    "mul.s"
     "mul.d"
+    "div.s"
     "div.d"
+    ;; Comparison
     "c.lt.s"
     "c.lt.d"
+    "c.gt.s"
+    "c.gt.d"
+    "madd.s"
+    "madd.d"
+    "msub.s"
+    "msub.d"
+    "movt.s"
+    "movt.d"
+    "movn.s"
+    "movn.d"
+    "movz.s"
+    "movz.d"
+    "trunc.w.d"
+    "trunc.w.s"
+    ;; Conversion
+    "cvt.s.d"
+    "cvt.d.s"
+    ;; Math
+    "abs.s"
+    "abs.d"
+    "sqrt.s"
+    "sqrt.d"
+    ;; Load-store
+    "l.s"
+    "l.d"
+    "s.s"
+    "s.d"
     ))
 
 (defconst mips-defs
@@ -173,6 +243,7 @@
     (define-key map (kbd "<backtab>") 'mips-dedent)
     (define-key map (kbd "C-c C-c") 'mips-run-buffer)
     (define-key map (kbd "C-c C-r") 'mips-run-region)
+    (define-key map (kbd "C-c C-l") 'mips-goto-label-at-cursor)
     map)
   "Keymap for mips-mode")
 
@@ -243,6 +314,16 @@ buffer's file"
   (switch-to-buffer-other-window (mips--interpreter-buffer-name))
   (read-only-mode t)
   (help-mode))
+
+(defun mips-goto-label (&optional label)
+  (interactive)
+  (let ((label (or label (read-minibuffer "Go to Label: "))))
+    (beginning-of-buffer)
+    (re-search-forward (format "[ \t]*%s:" label))))
+
+(defun mips-goto-label-at-cursor ()
+  (interactive)
+  (mips-goto-label (symbol-at-point)))
 
 ;;;###autoload
 (define-derived-mode mips-mode prog-mode "MIPS Assembly"
