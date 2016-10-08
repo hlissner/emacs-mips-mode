@@ -44,6 +44,9 @@
     "mfhi"
     "mflo"
     "mul"
+    "mulu"
+    "mulo"
+    "mulou"
     ;; Bitwise operations
     "not"
     "and"
@@ -61,6 +64,12 @@
     "srlv"
     "srav"
     ;; Comparisons
+    "seq"
+    "sne"
+    "sgt"
+    "sgtu"
+    "sge"
+    "sgeu"
     "slt"
     "sltu"
     "slti"
@@ -80,9 +89,13 @@
     "lh"
     "lhu"
     "lw"
+    "lwl"
+    "lwr"
     "sb"
     "sh"
     "sw"
+    "swl"
+    "swr"
     ;; Concurrent load/store
     "ll"
     "sc"
@@ -100,6 +113,7 @@
     "tltiu"
     "tne"
     "tnei"
+    "rfe"
     ;; Pseudoinstructions
     "b"
     "bal"
@@ -123,6 +137,8 @@
     "la"
     "li"
     "move"
+    "movz"
+    "movn"
     "nop"
     "clear"
     ;; Deprecated branch-hint pseudoinstructions
@@ -161,11 +177,19 @@
     "movz.d"
     "trunc.w.d"
     "trunc.w.s"
+    ;; Conversion
+    "cvt.s.d"
+    "cvt.d.s"
     ;; Math
     "abs.s"
     "abs.d"
     "sqrt.s"
     "sqrt.d"
+    ;; Load-store
+    "l.s"
+    "l.d"
+    "s.s"
+    "s.d"
     ))
 
 (defconst mips-defs
