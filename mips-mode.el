@@ -272,7 +272,7 @@
   (save-excursion
     (previous-line)
     (end-of-line)
-    (re-search-backward "^[ \t]*\\w+:")
+    (re-search-backward "^[ \t]*[a-zA-Z][a-zA-Z_0-9]*:")
     (line-number-at-pos)))
 
 (defun mips-indent ()
