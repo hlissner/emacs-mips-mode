@@ -323,7 +323,7 @@
 (defun mips-align-label-line ()
   (let ((line-length (length (thing-at-point 'line t))))
     (when (mips-line-label-only)
-      (if (< line-length mips-tab-width)
+      (if (<= line-length mips-tab-width)
         (move-to-column mips-tab-width t)
         (end-of-line)))))
 
