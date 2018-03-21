@@ -1,23 +1,22 @@
 ;;; mips-mode.el --- Major-mode for MIPS assembly
 ;;
-;; Copyright (C) 2016 Henrik Lissner
+;; Copyright (C) 2016-2018 Henrik Lissner
 ;;
 ;; Author: Henrik Lissner <http://github/hlissner>
 ;; Maintainer: Henrik Lissner <henrik@lissner.net>
 ;; Created: September 8, 2016
-;; Modified: September 22, 2016
-;; Version: 1.1.0
-;; Package-Version: 20170310.2149
-;; Keywords: mips assembly
+;; Modified: March 21, 2018
+;; Version: 1.1.1
+;; Keywords: languages mips assembly
 ;; Homepage: https://github.com/hlissner/emacs-mips-mode
 ;;
 ;; This file is not part of GNU Emacs.
 ;;
 ;;; Commentary:
 ;;
-;; A major mode for MIPS Assembly based off [haxor-mode]. Written for the
-;; MIPS Assembly track on exercism.io. A MIPS interpreter such as spim
-;; must be installed for the code evaluation features.
+;; A major mode for MIPS Assembly, loosely based off haxor-mode. Written for the
+;; MIPS Assembly track on exercism.io. A MIPS interpreter such as spim must be
+;; installed for the code evaluation features.
 ;;
 ;;; Code:
 
