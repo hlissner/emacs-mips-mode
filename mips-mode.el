@@ -22,13 +22,25 @@
 ;;; Code:
 
 (defgroup mips nil
-  "Major mode for editing MIPS assembly"
+  "Major mode for editing MIPS assembly."
   :prefix "mips-"
   :group 'languages
   :link '(url-link :tag "Github" "https://github.com/hlissner/emacs-mips-mode")
   :link '(emacs-commentary-link :tag "Commentary" "ng2-mode"))
 
-(defconst mips-keywords
+(defcustom mips-tab-width tab-width
+  "Width of a tab for `mips-mode'."
+  :tag "Tab width"
+  :group 'mips
+  :type 'integer)
+
+(defcustom mips-interpreter "spim"
+  "Path to the mips interpreter executable for running mips code with."
+  :tag "MIPS Interpreter"
+  :group 'mips
+  :type 'string)
+
+(defvar mips-keywords
   '(;; Arithmetic insturctions
     "add"
     "sub"
@@ -190,10 +202,9 @@
     "l.s"
     "l.d"
     "s.s"
-    "s.d"
-    ))
+    "s.d"))
 
-(defconst mips-defs
+(defvar mips-defs
   '(".align"
     ".ascii"
     ".asciiz"
@@ -210,7 +221,13 @@
     ".text"
     ".word"))
 
-(defconst mips-font-lock-defaults
+(defvar mips-re-label "^[ \t]*[a-zA-Z_0-9]*:")
+
+(defvar mips-re-directive "^[ \\t]?+\\.")
+
+(defvar mips-re-comment "^[ \\t]?+#")
+
+(defvar mips-font-lock-defaults
   `((;; numbers
      ("\\_<-?[0-9]+\\>" . font-lock-constant-face)
      ;; stuff enclosed in "
@@ -227,27 +244,7 @@
      ;; special characters
      (":\\|,\\|;\\|{\\|}\\|=>\\|@\\|\\$\\|=" . font-lock-builtin-face))))
 
-(defcustom mips-tab-width tab-width
-  "Width of a tab for MIPS mode"
-  :tag "Tab width"
-  :group 'mips
-  :type 'integer)
-
-(defcustom mips-interpreter "spim"
-  "Interpreter to run mips code in"
-  :tag "MIPS Interpreter"
-  :group 'mips
-  :type 'string)
-
-(defvar mips-map
-  (let ((map (make-keymap)))
-    (define-key map (kbd "<backtab>") 'mips-dedent)
-    (define-key map (kbd "C-c C-c") 'mips-run-buffer)
-    (define-key map (kbd "C-c C-r") 'mips-run-region)
-    (define-key map (kbd "C-c C-l") 'mips-goto-label-at-cursor)
-    map)
-  "Keymap for mips-mode")
-
+;;
 (defun mips--interpreter-buffer-name ()
   "Return a buffer name for the preferred mips interpreter"
   (format "*%s*" mips-interpreter))
@@ -256,44 +253,27 @@
   "Return the appropriate argument to accept a file for the current mips interpreter"
   (cond ((equal mips-interpreter "spim") "-file")))
 
-(defun mips--get-indent-level (&optional line)
-  "Returns the number of spaces indenting the last label."
-  (interactive)
-  (- (save-excursion
-       (goto-line (or line (line-number-at-pos)))
-       (back-to-indentation)
-       (current-column))
-     (save-excursion
-       (goto-line (or line (line-number-at-pos)))
-       (beginning-of-line)
-       (current-column))))
-
-(defconst *mips-label* "^[ \t]*[a-zA-Z_0-9]*:")
-
-(defconst *mips-directive* "^[ \\t]?+\\.")
-
-(defconst *mips-comment* "^[ \\t]?+#")
-
 (defun mips--last-label-line ()
   "Returns the line of the last label"
   (save-excursion
     (previous-line)
     (end-of-line)
-    (re-search-backward *mips-label*)
+    (re-search-backward mips-re-label)
     (line-number-at-pos)))
 
 (defun mips-indent ()
+  "Indent the current line(s)."
   (interactive)
   ;; ensure line when end or empty
   (when (or (eobp) (and (bobp) (eobp)))
     (open-line 1))
   (let ((line (thing-at-point 'line t)))
-    (cond ((string-match-p *mips-comment* line)
+    (cond ((string-match-p mips-re-comment line)
            (mips-indent-label))
-          ((string-match-p *mips-directive* line)
+          ((string-match-p mips-re-directive line)
            (mips-indent-directive)
            (when (bolp) (back-to-indentation)))
-          ((string-match-p *mips-label* line)
+          ((string-match-p mips-re-label line)
            (mips-indent-label))
           ;; assume that everything else is an instruction
           ((mips-mark-before-indent-column-p)
@@ -303,6 +283,7 @@
               (mips-indent-instruction))))))
 
 (defun mips-dedent ()
+  "Un-indent the current line."
   (interactive)
   (indent-line-to 0))
 
@@ -322,12 +303,12 @@
 
 (defun mips-align-label-line ()
   (let ((line-length (length (thing-at-point 'line t))))
-    (when (mips-line-label-only)
+    (when (mips-line-label-only-p)
       (if (<= line-length mips-tab-width)
         (move-to-column mips-tab-width t)
         (end-of-line)))))
 
-(defun mips-line-label-only ()
+(defun mips-line-label-only-p ()
   (string-match-p "^[ \t]*[a-zA-Z_0-9]*:[ \t]?*$" (thing-at-point 'line t)))
 
 (defun mips-mark-before-indent-column-p ()
@@ -360,35 +341,42 @@ buffer's file"
     (start-process mips-interpreter
                    (mips--interpreter-buffer-name)
                    mips-interpreter (mips--interpreter-file-arg) file))
-  (switch-to-buffer-other-window (mips--interpreter-buffer-name))
+  (pop-to-buffer (mips--interpreter-buffer-name))
   (read-only-mode t)
   (help-mode))
 
-(defun mips-goto-label (&optional label)
-  (interactive)
-  (let ((label (or label (read-minibuffer "Go to Label: "))))
+(defun mips-goto-label (label)
+  "Jump to the label entitled LABEL."
+  (interactive "sGo to Label: ")
+  (let ((orig-pt (point)))
     (beginning-of-buffer)
-    (re-search-forward (format "[ \t]*%s:" label))))
+    (unless (re-search-forward (format "[ \t]*%s:" label))
+      (goto-char orig-pt))))
 
 (defun mips-goto-label-at-cursor ()
+  "Jump to the label that matches the symbol at point."
   (interactive)
   (mips-goto-label (symbol-at-point)))
+
+(defvar mips-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "<backtab>") #'mips-dedent)
+    (define-key map (kbd "C-c C-c")   #'mips-run-buffer)
+    (define-key map (kbd "C-c C-r")   #'mips-run-region)
+    (define-key map (kbd "C-c C-l")   #'mips-goto-label-at-cursor)
+    map)
+  "Keymap for `mips-mode'.")
 
 ;;;###autoload
 (define-derived-mode mips-mode prog-mode "MIPS Assembly"
   "Major mode for editing MIPS assembler code."
-
-  (setq font-lock-defaults mips-font-lock-defaults)
+  (setq font-lock-defaults mips-font-lock-defaults
+        comment-start "#"
+        comment-end ""
+        indent-line-function 'mips-indent)
   (when mips-tab-width
     (setq tab-width mips-tab-width))
-
-  (setq comment-start "#")
-  (setq comment-end "")
-
-  (use-local-map mips-map)
-  (setq indent-line-function 'mips-indent)
-
-  (modify-syntax-entry ?# "< b" mips-mode-syntax-table)
+  (modify-syntax-entry ?#  "< b" mips-mode-syntax-table)
   (modify-syntax-entry ?\n "> b" mips-mode-syntax-table))
 
 ;;;###autoload
