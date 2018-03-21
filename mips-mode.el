@@ -7,6 +7,7 @@
 ;; Created: September 8, 2016
 ;; Modified: September 22, 2016
 ;; Version: 1.1.0
+;; Package-Version: 20170310.2149
 ;; Keywords: mips assembly
 ;; Homepage: https://github.com/hlissner/emacs-mips-mode
 ;;
@@ -215,7 +216,7 @@
      ;; stuff enclosed in "
      ("\"\\.\\*\\?" . font-lock-string-face)
      ;; labels
-     ("[a-zA-Z][a-zA-Z_0-9]*:" . font-lock-function-name-face)
+     ("[a-zA-Z_0-9]*:" . font-lock-function-name-face)
      (,(regexp-opt mips-keywords 'words) . font-lock-keyword-face)
      ;; coprocessor load-store instructions
      ("[sl]wc[1-9]" . font-lock-keyword-face)
@@ -267,22 +268,70 @@
        (beginning-of-line)
        (current-column))))
 
+(defconst *mips-label* "^[ \t]*[a-zA-Z_0-9]*:")
+
+(defconst *mips-directive* "^[ \\t]?+\\.")
+
+(defconst *mips-comment* "^[ \\t]?+#")
+
 (defun mips--last-label-line ()
   "Returns the line of the last label"
   (save-excursion
     (previous-line)
     (end-of-line)
-    (re-search-backward "^[ \t]*[a-zA-Z][a-zA-Z_0-9]*:")
+    (re-search-backward *mips-label*)
     (line-number-at-pos)))
 
 (defun mips-indent ()
   (interactive)
-  (indent-line-to (+ mips-tab-width
-                     (mips--get-indent-level (mips--last-label-line)))))
+  ;; ensure line when end or empty
+  (when (or (eobp) (and (bobp) (eobp)))
+    (open-line 1))
+  (let ((line (thing-at-point 'line t)))
+    (cond ((string-match-p *mips-comment* line)
+           (mips-indent-label))
+          ((string-match-p *mips-directive* line)
+           (mips-indent-directive)
+           (when (bolp) (back-to-indentation)))
+          ((string-match-p *mips-label* line)
+           (mips-indent-label))
+          ;; assume that everything else is an instruction
+          ((mips-mark-before-indent-column-p)
+           (mips-indent-instruction)
+           (back-to-indentation))
+          (t (save-mark-and-excursion
+              (mips-indent-instruction))))))
 
 (defun mips-dedent ()
   (interactive)
-  (indent-line-to (- (mips--get-indent-level) mips-tab-width)))
+  (indent-line-to 0))
+
+(defun mips-indent-instruction ()
+  (indent-line-to mips-tab-width))
+
+(defun mips-indent-directive ()
+  (when (mips-mark-before-indent-column-p)
+    (back-to-indentation))
+  (save-mark-and-excursion
+   (indent-line-to mips-tab-width)))
+
+(defun mips-indent-label ()
+  (save-mark-and-excursion
+   (mips-dedent)
+   (mips-align-label-line)))
+
+(defun mips-align-label-line ()
+  (let ((line-length (length (thing-at-point 'line t))))
+    (when (mips-line-label-only)
+      (if (<= line-length mips-tab-width)
+        (move-to-column mips-tab-width t)
+        (end-of-line)))))
+
+(defun mips-line-label-only ()
+  (string-match-p "^[ \t]*[a-zA-Z_0-9]*:[ \t]?*$" (thing-at-point 'line t)))
+
+(defun mips-mark-before-indent-column-p ()
+  (string-match-p "^[ \\t]*$" (subseq (thing-at-point 'line t) 0 (current-column))))
 
 (defun mips-run-buffer ()
   "Run the current buffer in a mips interpreter, and display the output in another window"
