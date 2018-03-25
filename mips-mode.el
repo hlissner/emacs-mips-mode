@@ -7,6 +7,7 @@
 ;; Created: September 8, 2016
 ;; Modified: March 21, 2018
 ;; Version: 1.1.1
+;; Package-Version: 20180321.211
 ;; Keywords: languages mips assembly
 ;; Homepage: https://github.com/hlissner/emacs-mips-mode
 ;;
@@ -28,8 +29,20 @@
   :link '(emacs-commentary-link :tag "Commentary" "ng2-mode"))
 
 (defcustom mips-tab-width tab-width
-  "Width of a tab for `mips-mode'."
+  "Width of a tab for `mips-mode'. It is also the opcode column."
   :tag "Tab width"
+  :group 'mips
+  :type 'integer)
+
+(defcustom mips-opcode-offset mips-tab-width
+  "The width of separation between the opcode and registers."
+  :tag "MIPS assembly opcode <> register offset."
+  :group 'mips
+  :type 'integer)
+
+(defcustom mips-base-line 0
+  "The base line from which code is started."
+  :tag "Indent base line."
   :group 'mips
   :type 'integer)
 
@@ -220,12 +233,6 @@
     ".text"
     ".word"))
 
-(defvar mips-re-label "^[ \t]*[a-zA-Z_0-9]*:")
-
-(defvar mips-re-directive "^[ \\t]?+\\.")
-
-(defvar mips-re-comment "^[ \\t]?+#")
-
 (defvar mips-font-lock-defaults
   `((;; numbers
      ("\\_<-?[0-9]+\\>" . font-lock-constant-face)
@@ -260,58 +267,145 @@
     (re-search-backward mips-re-label)
     (line-number-at-pos)))
 
+;;;;;;;;;;;;;;;;;;;;;;;
+;; INDENTATION LOGIC ;;
+;;;;;;;;;;;;;;;;;;;;;;;
+
+(defvar mips-re-label "^[ \t]*[a-zA-Z_0-9]*:[ \t]?*")
+
+(defvar mips-re-label-only "^[ \t]*[a-zA-Z_0-9]*:[ \t]?*$")
+
+(defvar mips-re-label-instruction "^\\([ \t]*[a-zA-Z0-9_]*:?[ \t]+\\)[a-zA-Z]+[^\n]")
+
+(defvar mips-re-directive "^[ \\t]?+\\.")
+
+(defvar mips-re-comment "^[ \\t]?+#")
+
+(defun mips-line ()
+  (thing-at-point 'line t))
+
 (defun mips-indent ()
-  "Indent the current line(s)."
   (interactive)
-  ;; ensure line when end or empty
   (when (or (eobp) (and (bobp) (eobp)))
     (open-line 1))
-  (let ((line (thing-at-point 'line t)))
-    (cond ((string-match-p mips-re-comment line)
-           (mips-indent-label))
-          ((string-match-p mips-re-directive line)
-           (mips-indent-directive)
-           (when (bolp) (back-to-indentation)))
-          ((string-match-p mips-re-label line)
-           (mips-indent-label))
-          ;; assume that everything else is an instruction
-          ((mips-mark-before-indent-column-p)
-           (mips-indent-instruction)
-           (back-to-indentation))
-          (t (save-mark-and-excursion
-              (mips-indent-instruction))))))
+  (cond ((mips-line-comment-p)
+         (mips-indent-comment))
+        ((mips-line-directive-p)
+         (mips-indent-directive))
+        ((mips-line-label-p)
+         (mips-indent-label))
+        (t (mips-indent-instruction))))
 
-(defun mips-dedent ()
-  "Un-indent the current line."
-  (interactive)
-  (indent-line-to 0))
+;; COMMENT
+(defun mips-line-comment-p ()
+  (string-match-p mips-re-comment (mips-line)))
 
-(defun mips-indent-instruction ()
-  (indent-line-to mips-tab-width))
+(defun mips-indent-comment ()
+  (save-mark-and-excursion
+   (indent-line-to mips-base-line)))
+
+;; DIRECTIVE
+(defun mips-line-directive-p ()
+  (string-match-p mips-re-directive (mips-line)))
 
 (defun mips-indent-directive ()
-  (when (mips-mark-before-indent-column-p)
-    (back-to-indentation))
   (save-mark-and-excursion
-   (indent-line-to mips-tab-width)))
+   (indent-line-to mips-tab-width))
+  (if (mips-mark-before-indent-column-p)
+    (back-to-indentation)
+    (end-of-line)))
 
+;; LABELS, INSTRUCTIONS
 (defun mips-indent-label ()
-  (save-mark-and-excursion
-   (mips-dedent)
-   (mips-align-label-line)))
-
-(defun mips-align-label-line ()
-  (let ((line-length (length (thing-at-point 'line t))))
-    (when (mips-line-label-only-p)
-      (if (<= line-length mips-tab-width)
-        (move-to-column mips-tab-width t)
-        (end-of-line)))))
+  (indent-line-to mips-base-line)
+  (cond ((mips-line-label-only-p)
+         (move-to-column mips-tab-width t))
+        ((and (mips-line-has-opcode-p)
+              (mips-short-label-p))
+         (mips-indent-opcode-column))
+        (t (message "Malformed label line."))))
 
 (defun mips-line-label-only-p ()
-  (string-match-p "^[ \t]*[a-zA-Z_0-9]*:[ \t]?*$" (thing-at-point 'line t)))
+  (string-match-p mips-re-label-only (mips-line)))
+
+(defun mips-short-label-p ()
+  (< (mips-line-label-length) mips-tab-width))
+
+(defun mips-line-label-p ()
+  (string-match-p mips-re-label (mips-line)))
+
+(defun mips-line-label-length ()
+  (let* ((line (mips-line))
+         (pos (string-match ":" line)))
+    (and pos (length (subseq line 0 pos)))))
+
+(defun mips-indent-opcode-column ()
+  (beginning-of-line)
+  (search-forward ":")
+  (re-search-forward "[a-zA-Z]")
+  (backward-char)
+  (while (< (current-column) mips-tab-width)
+    (insert 32))
+  (mips-indent-register-column))
+
+(defun mips-line-has-opcode-p ()
+  (string-match-p mips-re-label-instruction (mips-line)))
+
+(defun mips-line-instruction-p ()
+  (when (member (first (last (split-string (mips-line) " " t))) mips-keywords)
+    t))
+
+(defun mips-line-register-p ()
+  (string-match "\\$" (mips-line)))
+
+(defun mips-indent-instruction ()
+  (save-mark-and-excursion
+   (indent-line-to mips-tab-width))
+  (cond ((mips-empty-line-p)
+         (mips-indent-empty-line))
+        ((mips-mark-before-indent-column-p)
+         (back-to-indentation))
+        ((mips-line-register-p)
+         (mips-indent-register-column))
+        (t (move-to-column (mips-register-column) t))))
+
+(defun mips-empty-line-p ()
+  (string-match-p "^[ \t]+$" (mips-line)))
+
+(defun mips-indent-empty-line ()
+  (move-to-column mips-tab-width t))
+
+(defun mips-register-column ()
+  (+ mips-opcode-offset mips-tab-width))
+
+(defun mips-indent-register-column ()
+  (let ((col (mips-register-column)))
+    (if (mips-line-register-p)
+      (progn
+        (beginning-of-line)
+        (search-forward "$")
+        (backward-char)
+        (while (< (current-column) col)
+          (insert 32))))
+    (if (< (current-column) mips-tab-width)
+      (move-to-column mips-tab-width t)
+      (move-to-column (mips-register-column) t))
+    (mips-cycle-register-or-eol)))
 
 (defun mips-mark-before-indent-column-p ()
-  (string-match-p "^[ \\t]*$" (subseq (thing-at-point 'line t) 0 (current-column))))
+  (< (current-column) mips-tab-width))
+
+(defun mips-cycle-register-or-eol ()
+  (let ((comment-column (string-match-p "\\#" (mips-line))))
+    (if comment-column
+      (progn
+        (move-to-column comment-column)
+        (backward-word)
+        (forward-word))
+      (end-of-line))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 
 (defun mips-run-buffer ()
   "Run the current buffer in a mips interpreter, and display the output in another window"
