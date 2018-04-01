@@ -150,8 +150,8 @@ open the current buffer's file"
   ;; trigger it), It's only called by `mips-mode', and can be removed
   ;; as soon as tabs work properly.
   (save-excursion
-    (save-match-data (re-search-forward "^\t" nil t))
-    (when (and (match-data) (y-or-n-p "Sanitize (untabify/re-indent) buffer? "))
+    (when (and (re-search-forward "^\t" nil t)
+               (y-or-n-p "Sanitize (untabify/re-indent) buffer? "))
       (mips-indent-region (point-min) (point-max)))))
 
 ;;;;;;;;;;;;;;;;;
