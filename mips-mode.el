@@ -201,7 +201,9 @@ until COLUMN."
   "Indent MIPS assembly line at point and run hook."
   (interactive)
   (if (mips-comment-line-p)
-    (mips-dedent)
+    (if suppress-hook ;; called on a region
+      (mips-dedent)
+      (mips-cycle-indent))
     (save-mark-and-excursion
      (mips-pad-rxg mips-baseline-column 1)
      (mips-pad-rxg mips-operator-column 2)
@@ -233,16 +235,23 @@ until COLUMN."
   (deactivate-mark)
   (indent-line-to mips-baseline-column))
 
-(defun mips-cycle-point ()
-  "Move point to the next \"significant\" column on line."
+(defun mips-cycle (func &rest args)
   (cond ((or (bolp) (< (current-column) mips-operator-column))
-         (move-to-column mips-operator-column t))
+         (apply func mips-operator-column args))
         ((< (current-column) mips-operands-column)
-         (move-to-column mips-operands-column t))
+         (apply func mips-operands-column args))
         ((< (current-column) mips-comments-column)
-         (move-to-column mips-comments-column t))
-        ((eolp) (beginning-of-line))
+         (apply func mips-comments-column args))
+        ((eolp) (apply func mips-baseline-column args))
         (t (end-of-line))))
+
+(defun mips-cycle-indent ()
+  "Move indentation to the next \"significant\" column."
+  (mips-cycle #'indent-line-to))
+
+(defun mips-cycle-point ()
+  "Move point to the next \"significant\" column."
+  (mips-cycle #'move-to-column t))
 
 ;;;;;;;;;;;;;
 ;; FONTIFY ;;
