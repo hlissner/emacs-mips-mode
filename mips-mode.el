@@ -187,15 +187,15 @@ until COLUMN."
        (move-to-column (match-beginning ,group))
        (when (< (current-column) (match-end ,group))
          (while (/= (current-column) ,column)
-           (if (> (current-column) ,column)
+           (if (< (current-column) ,column)
+             (insert mips-indent-character)
              (if (member (preceding-char) mips-wp-char)
                (delete-backward-char 1)
-               (progn (message "Bumped into a wall at %s!"
-                               (current-column))
-                      (move-to-column ,column t)
+               (progn (message "Bumped into a wall at column %s!" (current-column))
+                      (insert mips-indent-character) ;; pad one whitespace
+                      (move-to-column ,column t)     ;; and bail out forward.
                       (while (member (char-after) mips-wp-char)
-                        (delete-forward-char 1))))
-             (insert mips-indent-character)))))))
+                        (delete-forward-char 1))))))))))
 
 (defun mips-indent-line (&optional suppress-hook)
   "Indent MIPS assembly line at point and run hook."
