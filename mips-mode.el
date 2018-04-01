@@ -55,26 +55,30 @@
 (defcustom mips-operands-column tab-width
   "Operands such as registers and label references are indented
 to this column."
-  :tag "Register/reference column."
+  :tag "Operands column."
   :group 'mips
-  :initialize (lambda (s v) (set-default s (* 2 mips-operator-column)))
+  :initialize (lambda (s v) (set-default s (+ 4 (* 2 mips-operator-column))))
   :type 'integer)
 
 (defcustom mips-comments-column 30
   "Comments are indented to this column."
   :tag "Comment column."
   :group 'mips
+  :initialize (lambda (s v) (set-default s (+ 20 mips-operands-column)))
   :type 'integer)
 
-(defcustom mips-cycle-indent t
-  "When non-nil, point jumps to the next imporatnt column when
-  indenting. Can be used to loop through the various elements of
-  a statement. "
-  :tag "Cycle indent."
+(defcustom mips-after-indent-hook 'mips-cycle-point
+  "Function to call after indenting."
+  :tag "Indent callback."
   :group 'mips
-  :type 'boolean)
+  :type 'symbol)
 
-;;;
+(defcustom mips-indent-character 32
+  "Indent character.."
+  :tag "Indent character."
+  :group 'mips
+  :type '(choice (const :tag "Space" 32)
+                 (const :tag "Tab (flaky, don't use!)" 11)))
 
 (defun mips--interpreter-buffer-name ()
   "Return a buffer name for the preferred mips interpreter"
@@ -90,7 +94,7 @@ current mips interpreter"
   (save-excursion
     (previous-line)
     (end-of-line)
-    (re-search-backward mips-re-label)
+    (re-search-backward "^[a-zA-Z0-9_]*:")
     (line-number-at-pos)))
 
 (defun mips-run-buffer ()
@@ -139,58 +143,98 @@ open the current buffer's file"
   (interactive)
   (mips-goto-label (symbol-at-point)))
 
+(defun mips-sanitize-buffer ()
+  "Untabify and re-indent the buffer."
+  ;; Tab-indenting is way too flaky for use, so until that's fixed,
+  ;; this is a kinda-sorta cleanup thing (leading tab characters
+  ;; trigger it), It's only called by `mips-mode', and can be removed
+  ;; as soon as tabs work properly.
+  (save-excursion
+    (save-match-data (re-search-forward "^\t" nil t))
+    (when (and (match-data) (y-or-n-p "Sanitize (untabify/re-indent) buffer? "))
+      (mips-indent-region (point-min) (point-max)))))
+
 ;;;;;;;;;;;;;;;;;
 ;; INDENTATION ;;
 ;;;;;;;;;;;;;;;;;
-
-;; FIXME: tab indenting support is very unstable.
-
 (defvar mips-line-re
   "\\(?:[ \t]*\\)?\\([a-zA-Z0-9_]*:\\)?\\(?:[ \t]+\\)?\\([\.a-zA-Z0-9_]*\\)?\\(?:[ \t]*\\)\\([^#\n^]+?\\)?\\(?:[ \t]*\\)?\\(#[^\n]*\\)?$"
-  "An (excessive-looking) regexp to match and group possible MIPS
-  assembly statements. Four capture groups will hold the tokens:
+  "An (excessive) regexp to match MIPS assembly statements. After
+  matching, `match-data' will hold four matching groups:
   1. `labeldef' 2. `operator' 3. `operands' 4. `comments'")
 
-(defmacro defpadder (name column matching-group)
-  "Define a function called NAME to indent one column of a
-MIPS assembly statement. Place point at the first non-whitespace
-character of REGEXP MATCHING-GROUP and pad it to COLUMN."
-  `(defun ,name ()
-     (string-match mips-line-re (thing-at-point 'line t))
-     (when (wholenump (match-beginning ,matching-group))
-       (move-to-column (match-beginning ,matching-group))
-       (when (< (current-column) (match-end ,matching-group))
+(defvar mips-comment-line-re "^[ t]*#[^\n]*"
+  "Regexp to match comment-only lines.")
+
+(defvar mips-wp-char '(11 32)
+  "A list of integers for whitespace.")
+
+(defun mips-line ()
+  "Return line at point as a string."
+  (thing-at-point 'line t))
+
+(defun mips-comment-line-p ()
+  "Return true if line at point is comment-only."
+  (string-match-p mips-comment-line-re (mips-line)))
+
+(defmacro mips-pad-rxg (column group)
+  "Match a MIPS assembly statement using `mips-line-re' and trim,
+pad or backward-delete string segment in matching group GROUP
+until COLUMN."
+  `(progn
+     (string-match mips-line-re (mips-line))
+     (when (wholenump (match-beginning ,group))
+       (move-to-column (match-beginning ,group))
+       (when (< (current-column) (match-end ,group))
          (while (/= (current-column) ,column)
            (if (> (current-column) ,column)
-             (if (member (preceding-char) '(11 32))
+             (if (member (preceding-char) mips-wp-char)
                (delete-backward-char 1)
-               (progn (move-to-column ,column t)
-                      (message "%s bumped into a wall!" ',name)))
-             (insert (if indent-tabs-mode 11 32))))))))
+               (progn (message "Bumped into a wall at %s!"
+                               (current-column))
+                      (move-to-column ,column t)
+                      (while (member (char-after) mips-wp-char)
+                        (delete-forward-char 1))))
+             (insert mips-indent-character)))))))
 
-(defpadder mips-labeldef mips-baseline-column 1)
-(defpadder mips-operator mips-operator-column 2)
-(defpadder mips-operands mips-operands-column 3)
-(defpadder mips-comments mips-comments-column 4)
-
-(defun mips-indent ()
-  "Indent line at point and cycle the cursor."
+(defun mips-indent-line (&optional suppress-hook)
+  "Indent MIPS assembly line at point and run hook."
   (interactive)
-  (save-mark-and-excursion
-   (mips-labeldef) (mips-operator)
-   (mips-operands) (mips-comments))
-  (when mips-cycle-indent
-    (mips-cycle-cursor)))
+  (if (mips-comment-line-p)
+    (mips-dedent)
+    (save-mark-and-excursion
+     (mips-pad-rxg mips-baseline-column 1)
+     (mips-pad-rxg mips-operator-column 2)
+     (mips-pad-rxg mips-operands-column 3)
+     (mips-pad-rxg mips-comments-column 4))
+    (unless suppress-hook
+      (when mips-after-indent-hook
+        (funcall mips-after-indent-hook)))))
+
+(defun mips-indent-region (start end)
+  "Indent a region consisting of MIPS assembly statements."
+  (interactive)
+  (deactivate-mark)
+  (let ((first-line (line-number-at-pos start))
+        (last-line  (line-number-at-pos end)))
+    (untabify (line-beginning-position first-line)
+              (line-end-position last-line))
+    (save-mark-and-excursion
+     (goto-line first-line)
+     (while (and (<= (line-number-at-pos (point)) last-line)
+                 (not (eobp)))
+       (funcall indent-line-function t)
+       (forward-line)))
+    (delete-trailing-whitespace)))
 
 (defun mips-dedent ()
+  "Dedent line to the baseline."
   (interactive)
-  (beginning-of-line)
-  (skip-chars-forward " \t")
-  (while (not (bolp))
-    (if (member (preceding-char) '(11 32))
-      (delete-backward-char 1 nil))))
+  (deactivate-mark)
+  (indent-line-to mips-baseline-column))
 
-(defun mips-cycle-cursor ()
+(defun mips-cycle-point ()
+  "Move point to the next \"significant\" column on line."
   (cond ((or (bolp) (< (current-column) mips-operator-column))
          (move-to-column mips-operator-column t))
         ((< (current-column) mips-operands-column)
@@ -206,7 +250,7 @@ character of REGEXP MATCHING-GROUP and pad it to COLUMN."
 
 (defvar mips-font-lock-keywords
   '( ;; Arithmetic insturctions
-    "add" "sub" "addi" "addu" "subu" "addiu"
+    "add" "sub" "addi" "subi" "addu" "addiu"
     ;; Multiplication/division
     "mult" "div" "rem" "multu" "divu" "mfhi" "mflo" "mul" "mulu" "mulo" "mulou"
     ;; Bitwise operations
@@ -224,16 +268,16 @@ character of REGEXP MATCHING-GROUP and pad it to COLUMN."
     ;; Trap handling
     "break" "teq" "teqi" "tge" "tgei" "tgeu" "tgeiu" "tlt" "tlti" "tltu" "tltiu" "tne" "tnei" "rfe"
     ;; Pseudoinstructions
-    "b" "bal" "bge" "bgt" "ble" "blt" "bgeu" "bleu" "bltu" "bgtu" "bgez" "blez" "bgtz" "bltz" "bnez"
-    "beqz" "bltzal" "bgezal" "bgtu" "la" "li" "move" "movz" "movn" "nop" "clear"
+    "b" "bal" "bge" "bgt" "ble" "blt" "bgeu" "bleu" "bltu" "bgtu" "bgez" "blez" "bgtz"
+    "bltz" "bnez" "beqz" "bltzal" "bgezal" "bgtu" "la" "li" "move" "movz" "movn" "nop" "clear"
     ;; Deprecated branch-hint pseudoinstructions
     "beql" "bnel" "bgtzl" "bgezl" "bltzl" "blezl" "bltzall" "bgezall"
     ;; Floating point instuctions
     ;; Arithmetic
     "add.s" "add.d" "sub.s" "sub.d" "mul.s" "mul.d" "div.s" "div.d"
     ;; Comparison
-    "c.lt.s" "c.lt.d" "c.gt.s" "c.gt.d" "madd.s" "madd.d" "msub.s" "msub.d" "movt.s" "movt.d"
-    "movn.s" "movn.d" "movz.s" "movz.d" "trunc.w.d" "trunc.w.s"
+    "c.lt.s" "c.lt.d" "c.gt.s" "c.gt.d" "madd.s" "madd.d" "msub.s" "msub.d" "movt.s"
+    "movt.d" "movn.s" "movn.d" "movz.s" "movz.d" "trunc.w.d" "trunc.w.s"
     ;; Conversion
     "cvt.s.d" "cvt.d.s"
     ;; Math
@@ -281,9 +325,12 @@ character of REGEXP MATCHING-GROUP and pad it to COLUMN."
   (setq font-lock-defaults mips-font-lock-defaults
         comment-start "#"
         comment-end ""
-        indent-line-function 'mips-indent)
+        indent-line-function 'mips-indent-line
+        indent-region-function 'mips-indent-region
+        indent-tabs-mode nil)
   (when mips-tab-width
     (setq tab-width mips-tab-width))
+  (mips-sanitize-buffer)
   (modify-syntax-entry ?#  "< b" mips-mode-syntax-table)
   (modify-syntax-entry ?\n "> b" mips-mode-syntax-table))
 
