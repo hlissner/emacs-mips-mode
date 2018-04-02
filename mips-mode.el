@@ -201,8 +201,7 @@ until COLUMN."
   "Indent MIPS assembly line at point and run hook."
   (interactive)
   (if (mips-comment-line-p)
-    (if suppress-hook ;; called on a region
-      (mips-dedent)
+    (unless suppress-hook
       (mips-cycle-indent))
     (save-mark-and-excursion
      (mips-pad-rxg mips-baseline-column 1)
