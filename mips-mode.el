@@ -177,25 +177,24 @@ open the current buffer's file"
   "Return true if line at point is comment-only."
   (string-match-p mips-comment-line-re (mips-line)))
 
-(defmacro mips-pad-rxg (column group)
+(defun mips-pad-rxg (column group)
   "Match a MIPS assembly statement using `mips-line-re' and trim,
 pad or backward-delete string segment in matching group GROUP
 until COLUMN."
-  `(progn
-     (string-match mips-line-re (mips-line))
-     (when (wholenump (match-beginning ,group))
-       (move-to-column (match-beginning ,group))
-       (when (< (current-column) (match-end ,group))
-         (while (/= (current-column) ,column)
-           (if (< (current-column) ,column)
-             (insert mips-indent-character)
-             (if (member (preceding-char) mips-wp-char)
-               (delete-backward-char 1)
-               (progn (message "Bumped into a wall at column %s!" (current-column))
-                      (insert mips-indent-character) ;; pad one whitespace
-                      (move-to-column ,column t)     ;; and bail out forward.
-                      (while (member (char-after) mips-wp-char)
-                        (delete-forward-char 1))))))))))
+  (string-match mips-line-re (mips-line))
+  (when (wholenump (match-beginning group))
+    (move-to-column (match-beginning group))
+    (when (< (current-column) (match-end group))
+      (while (/= (current-column) column)
+        (if (< (current-column) column)
+          (insert mips-indent-character)
+          (if (member (preceding-char) mips-wp-char)
+            (delete-backward-char 1)
+            (progn (message "Bumped into a wall at column %s!" (current-column))
+                   (insert mips-indent-character) ;; pad one whitespace
+                   (move-to-column column t)     ;; and bail out forward.
+                   (while (member (char-after) mips-wp-char)
+                     (delete-forward-char 1)))))))))
 
 (defun mips-indent-line (&optional suppress-hook)
   "Indent MIPS assembly line at point and run hook."
@@ -241,8 +240,7 @@ until COLUMN."
          (apply func mips-operands-column args))
         ((< (current-column) mips-comments-column)
          (apply func mips-comments-column args))
-        ((eolp) (apply func mips-baseline-column args))
-        (t (end-of-line))))
+        (t (apply func mips-baseline-column args))))
 
 (defun mips-cycle-indent ()
   "Move indentation to the next \"significant\" column."
