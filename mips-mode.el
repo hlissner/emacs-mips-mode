@@ -158,10 +158,12 @@ open the current buffer's file"
 ;; INDENTATION ;;
 ;;;;;;;;;;;;;;;;;
 (defvar mips-line-re
-  "\\(?:[ \t]*\\)?\\([a-zA-Z0-9_]*:\\)?\\(?:[ \t]+\\)?\\([\.a-zA-Z0-9_]*\\)?\\(?:[ \t]*\\)\\([^#\n^]+?\\)?\\(?:[ \t]*\\)?\\(#[^\n]*\\)?$"
-  "An (excessive) regexp to match MIPS assembly statements. After
-  matching, `match-data' will hold four matching groups:
-  1. `labeldef' 2. `operator' 3. `operands' 4. `comments'")
+  (concat
+   "\\(?:[ \t]*\\)?\\([a-zA-Z0-9_]*:\\)?"      ;; label definition
+   "\\(?:[ \t]*\\)?\\([\.a-zA-Z0-9_]*\\)?"     ;; opcode/operator
+   "\\(?:[ \t]*\\)?\\(\".*\"\\|[^#\n^]+?\\)?"  ;; operands/registers
+   "\\(?:[ \t]*\\)?\\(#[^\n]*\\)?$")           ;; comments
+  "An (excessive) regexp to match MIPS assembly statements.")
 
 (defvar mips-comment-line-re "^[ t]*#[^\n]*"
   "Regexp to match comment-only lines.")
