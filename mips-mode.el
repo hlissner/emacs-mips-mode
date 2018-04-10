@@ -194,7 +194,7 @@ until COLUMN."
             (delete-backward-char 1)
             (progn (message "Bumped into a wall at column %s!" (current-column))
                    (insert mips-indent-character) ;; pad one whitespace
-                   (move-to-column column t)     ;; and bail out forward.
+                   (move-to-column column t)      ;; and bail out forward.
                    (while (member (char-after) mips-wp-char)
                      (delete-forward-char 1)))))))))
 
@@ -227,13 +227,21 @@ until COLUMN."
                  (not (eobp)))
        (funcall indent-line-function t)
        (forward-line)))
-    (delete-trailing-whitespace)))
+    (delete-trailing-whitespace start end)))
 
 (defun mips-dedent ()
   "Dedent line to the baseline."
   (interactive)
   (deactivate-mark)
   (indent-line-to mips-baseline-column))
+
+(defun mips-newline ()
+  "`newline' for MIPS assembly." ;; to handle comment lines
+  (interactive)
+  (if (mips-comment-line-p)
+    (progn (open-line 1) (forward-line))
+    (newline)
+    (mips-indent-line)))
 
 (defun mips-cycle (func &rest args)
   (cond ((or (bolp) (< (current-column) mips-operator-column))
@@ -321,6 +329,7 @@ until COLUMN."
 (defvar mips-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "<backtab>") #'mips-dedent)
+    (define-key map (kbd "RET")       #'mips-newline)
     (define-key map (kbd "C-c C-c")   #'mips-run-buffer)
     (define-key map (kbd "C-c C-r")   #'mips-run-region)
     (define-key map (kbd "C-c C-l")   #'mips-goto-label-at-cursor)
