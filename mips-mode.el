@@ -201,17 +201,19 @@ until COLUMN."
 (defun mips-indent-line (&optional suppress-hook)
   "Indent MIPS assembly line at point and run hook."
   (interactive)
-  (if (mips-comment-line-p)
-    (unless suppress-hook
-      (mips-cycle-indent))
-    (save-mark-and-excursion
-     (mips-pad-rxg mips-baseline-column 1)
-     (mips-pad-rxg mips-operator-column 2)
-     (mips-pad-rxg mips-operands-column 3)
-     (mips-pad-rxg mips-comments-column 4))
-    (unless suppress-hook
-      (when mips-after-indent-hook
-        (funcall mips-after-indent-hook)))))
+  (when (eobp) (open-line 1))
+  (let ((line-before-indent (mips-line)))
+    (if (mips-comment-line-p)
+      (unless suppress-hook
+        (mips-cycle-indent))
+      (save-mark-and-excursion
+       (mips-pad-rxg mips-baseline-column 1)
+       (mips-pad-rxg mips-operator-column 2)
+       (mips-pad-rxg mips-operands-column 3)
+       (mips-pad-rxg mips-comments-column 4))
+      (unless suppress-hook
+        (when (and mips-after-indent-hook (string-equal line-before-indent (mips-line)))
+          (funcall mips-after-indent-hook))))))
 
 (defun mips-indent-region (start end)
   "Indent a region consisting of MIPS assembly statements."
@@ -238,10 +240,8 @@ until COLUMN."
 (defun mips-newline ()
   "`newline' for MIPS assembly." ;; to handle comment lines
   (interactive)
-  (if (mips-comment-line-p)
-    (progn (open-line 1) (forward-line))
-    (newline)
-    (mips-indent-line)))
+  (cond ((mips-comment-line-p) (split-line) (forward-line))
+        (t (newline) (mips-indent-line))))
 
 (defun mips-cycle (func &rest args)
   (cond ((or (bolp) (< (current-column) mips-operator-column))
