@@ -241,7 +241,7 @@ until COLUMN."
   "`newline' for MIPS assembly." ;; to handle comment lines
   (interactive)
   (cond ((mips-comment-line-p) (split-line) (forward-line))
-        (t (newline) (mips-indent-line))))
+        (t (newline) (mips-indent-line) (back-to-indentation))))
 
 (defun mips-cycle (func &rest args)
   (cond ((or (bolp) (< (current-column) mips-operator-column))
