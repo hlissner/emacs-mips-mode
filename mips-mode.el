@@ -86,8 +86,8 @@ to this column."
   :group 'mips
   :set (lambda (s v)
          (set-default s v)
-         (if v (add-hook 'post-self-insert-hook #'mips-auto-indent)
-             (remove-hook 'post-self-insert-hook #'mips-auto-indent)))
+         (if v (add-hook 'post-command-hook #'mips-auto-indent)
+             (remove-hook 'post-command--hook #'mips-auto-indent)))
   :type 'boolean)
 
 (defun mips--interpreter-buffer-name ()
