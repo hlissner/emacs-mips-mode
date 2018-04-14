@@ -74,11 +74,21 @@ to this column."
   :type 'symbol)
 
 (defcustom mips-indent-character 32
-  "Indent character.."
+  "Indent character."
   :tag "Indent character."
   :group 'mips
   :type '(choice (const :tag "Space" 32)
                  (const :tag "Tab (flaky, don't use!)" 11)))
+
+(defcustom mips-auto-indent nil
+  "If non-nil, columns are aligned automatically during typing."
+  :tag "Indent automatically."
+  :group 'mips
+  :set (lambda (s v)
+         (set-default s v)
+         (if v (add-hook 'post-self-insert-hook #'mips-auto-indent)
+             (remove-hook 'post-self-insert-hook #'mips-auto-indent)))
+  :type 'boolean)
 
 (defun mips--interpreter-buffer-name ()
   "Return a buffer name for the preferred mips interpreter"
@@ -206,14 +216,18 @@ until COLUMN."
     (if (mips-comment-line-p)
       (unless suppress-hook
         (mips-cycle-indent))
-      (save-mark-and-excursion
-       (mips-pad-rxg mips-baseline-column 1)
-       (mips-pad-rxg mips-operator-column 2)
-       (mips-pad-rxg mips-operands-column 3)
-       (mips-pad-rxg mips-comments-column 4))
+      (mips-align-all-columns)
       (unless suppress-hook
         (when (and mips-after-indent-hook (string-equal line-before-indent (mips-line)))
           (funcall mips-after-indent-hook))))))
+
+(defun mips-align-all-columns ()
+  "Align each column of a MIPS statement line."
+  (save-mark-and-excursion
+   (mips-pad-rxg mips-baseline-column 1)
+   (mips-pad-rxg mips-operator-column 2)
+   (mips-pad-rxg mips-operands-column 3)
+   (mips-pad-rxg mips-comments-column 4)))
 
 (defun mips-indent-region (start end)
   "Indent a region consisting of MIPS assembly statements."
@@ -231,6 +245,12 @@ until COLUMN."
        (forward-line)))
     (delete-trailing-whitespace start end)))
 
+(defun mips-auto-indent ()
+  (when (and mips-auto-indent
+             (eq major-mode 'mips-mode)
+             (not (mips-comment-line-p)))
+    (mips-align-all-columns)))
+
 (defun mips-dedent ()
   "Dedent line to the baseline."
   (interactive)
@@ -240,8 +260,13 @@ until COLUMN."
 (defun mips-newline ()
   "`newline' for MIPS assembly." ;; to handle comment lines
   (interactive)
-  (cond ((mips-comment-line-p) (split-line) (forward-line))
-        (t (newline) (mips-indent-line) (back-to-indentation))))
+  (cond ((mips-comment-line-p)
+         (open-line 1)
+         (forward-line))
+        (t (mips-indent-line t)
+           (newline)
+           (mips-indent-line)
+           (back-to-indentation))))
 
 (defun mips-cycle (func &rest args)
   (cond ((or (bolp) (< (current-column) mips-operator-column))
