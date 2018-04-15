@@ -248,7 +248,8 @@ until COLUMN."
 (defun mips-auto-indent ()
   (when (and mips-auto-indent
              (eq major-mode 'mips-mode)
-             (not (mips-comment-line-p)))
+             (and (stringp (mips-line))
+                  (not (mips-comment-line-p))))
     (mips-align-all-columns)))
 
 (defun mips-dedent ()
