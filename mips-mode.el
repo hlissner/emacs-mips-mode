@@ -354,8 +354,8 @@ until COLUMN."
 
 (defvar mips-mode-map
   (let ((map (make-sparse-keymap)))
+    (define-key map [remap newline-and-indent] #'mips-newline)
     (define-key map (kbd "<backtab>") #'mips-dedent)
-    (define-key map (kbd "RET")       #'mips-newline)
     (define-key map (kbd "C-c C-c")   #'mips-run-buffer)
     (define-key map (kbd "C-c C-r")   #'mips-run-region)
     (define-key map (kbd "C-c C-l")   #'mips-goto-label-at-cursor)
