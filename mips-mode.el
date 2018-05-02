@@ -67,7 +67,7 @@ to this column."
   :initialize (lambda (s v) (set-default s (+ 20 mips-operands-column)))
   :type 'integer)
 
-(defcustom mips-after-indent-hook 'mips-cycle-point
+(defcustom mips-after-indent-hook #'mips-cycle-point
   "Function to call after indenting."
   :tag "Indent callback."
   :group 'mips
@@ -365,14 +365,13 @@ until COLUMN."
 ;;;###autoload
 (define-derived-mode mips-mode prog-mode "MIPS Assembly"
   "Major mode for editing MIPS assembler code."
-  (setq font-lock-defaults mips-font-lock-defaults
-        comment-start "#"
-        comment-end ""
-        indent-line-function 'mips-indent-line
-        indent-region-function 'mips-indent-region
-        indent-tabs-mode nil)
-  (when mips-tab-width
-    (setq tab-width mips-tab-width))
+  (setq-local font-lock-defaults mips-font-lock-defaults)
+  (setq-local comment-start "#")
+  (setq-local comment-end "")
+  (setq-local indent-line-function #'mips-indent-line)
+  (setq-local indent-region-function #'mips-indent-region)
+  (setq-local indent-tabs-mode nil)
+  (setq-local tab-width (or mips-tab-width tab-width))
   (mips-sanitize-buffer)
   (modify-syntax-entry ?#  "< b" mips-mode-syntax-table)
   (modify-syntax-entry ?\n "> b" mips-mode-syntax-table))
