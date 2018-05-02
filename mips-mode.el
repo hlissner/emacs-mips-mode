@@ -5,9 +5,8 @@
 ;; Author: Henrik Lissner <http://github/hlissner>
 ;; Maintainer: Henrik Lissner <henrik@lissner.net>
 ;; Created: September 8, 2016
-;; Modified: March 21, 2018
-;; Version: 1.1.1
-;; Package-Version: 20180321.211
+;; Modified: May 2, 2018
+;; Version: 1.1.2
 ;; Keywords: languages mips assembly
 ;; Homepage: https://github.com/hlissner/emacs-mips-mode
 ;;
