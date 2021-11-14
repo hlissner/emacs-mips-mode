@@ -3,7 +3,7 @@
 ;; Copyright (C) 2016-2018 Henrik Lissner
 ;;
 ;; Author: Henrik Lissner <http://github/hlissner>
-;; Maintainer: Henrik Lissner <henrik@lissner.net>
+;; Maintainer: Henrik Lissner <contact@henrik.io>
 ;; Created: September 8, 2016
 ;; Modified: May 2, 2018
 ;; Version: 1.1.2
@@ -96,7 +96,9 @@ to this column."
 (defun mips--interpreter-file-arg ()
   "Return the appropriate argument to accept a file for the
 current mips interpreter"
-  (cond ((equal mips-interpreter "spim") "-file")))
+  (if (equal mips-interpreter "spim")
+      "-file"
+    ""))
 
 (defun mips--last-label-line ()
   "Returns the line of the last label"
