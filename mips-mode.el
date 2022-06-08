@@ -378,6 +378,13 @@ If SUPPRESS-HOOK, don't trigger `mips-after-indent-hook'."
 ;;
 ;;; Major mode
 
+(defvar mips-imenu-expression
+  '(("Label"     "^\\s-*\\([a-zA-Z0-9_]+\\):" 1)
+    ("Directive" "\\s-+[.]\\([a-z]+\\)"       1))
+  "List of definition matchers for creating an Imenu index in `mips-mode'.
+
+See `imenu-generic-expression' for details.")
+
 (defvar mips-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map [remap newline-and-indent] #'mips-newline)
@@ -402,6 +409,7 @@ If SUPPRESS-HOOK, don't trigger `mips-after-indent-hook'."
   (mips-sanitize-buffer)
   (modify-syntax-entry ?#  "< b" mips-mode-syntax-table)
   (modify-syntax-entry ?\n "> b" mips-mode-syntax-table)
+  (setq imenu-generic-expression #'mips-imenu-expression)
   (add-hook 'post-command-hook #'mips-auto-indent nil t))
 
 ;;;###autoload
