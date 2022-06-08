@@ -28,6 +28,10 @@
   :link '(url-link :tag "Github" "https://github.com/hlissner/emacs-mips-mode")
   :link '(emacs-commentary-link :tag "Commentary" "ng2-mode"))
 
+
+;;
+;;; Settings
+
 (defcustom mips-interpreter "spim"
   "Path to the mips interpreter executable."
   :tag "MIPS Interpreter"
@@ -85,6 +89,10 @@
   :group 'mips
   :type 'boolean)
 
+
+;;
+;;; Helpers
+
 (defun mips--interpreter-buffer-name ()
   "Return a buffer name for the preferred mips interpreter."
   (format "*%s*" mips-interpreter))
@@ -106,6 +114,29 @@ Depends on the value of `mips-interpreter'."
     (end-of-line)
     (re-search-backward "^[a-zA-Z0-9_]*:")
     (line-number-at-pos)))
+
+(defun mips-sanitize-buffer ()
+  "Untabify and re-indent the buffer."
+  ;; Tab-indenting is way too flaky for use, so until that's fixed,
+  ;; this is a kinda-sorta cleanup thing (leading tab characters
+  ;; trigger it), It's only called by `mips-mode', and can be removed
+  ;; as soon as tabs work properly.
+  (save-excursion
+    (when (and (re-search-forward "^\t" nil t)
+               (y-or-n-p "Sanitize (untabify/re-indent) buffer? "))
+      (mips-indent-region (point-min) (point-max)))))
+
+(defun mips-line ()
+  "Return line at point as a string."
+  (thing-at-point 'line t))
+
+(defun mips-comment-line-p ()
+  "Return non-nil if line at point is comment-only."
+  (string-match-p mips-comment-line-re (mips-line)))
+
+
+;;
+;;; Execution commands
 
 (defun mips-run-buffer ()
   "Run current buffer through `mips-interpreter' and display output in a popup."
@@ -142,6 +173,10 @@ buffer's file"
     (read-only-mode t)
     (help-mode)))
 
+
+;;
+;;; Navigation commands
+
 (defun mips-goto-label (label)
   "Jump to the label entitled LABEL."
   (interactive "sGo to Label: ")
@@ -155,20 +190,10 @@ buffer's file"
   (interactive)
   (mips-goto-label (symbol-at-point)))
 
-(defun mips-sanitize-buffer ()
-  "Untabify and re-indent the buffer."
-  ;; Tab-indenting is way too flaky for use, so until that's fixed,
-  ;; this is a kinda-sorta cleanup thing (leading tab characters
-  ;; trigger it), It's only called by `mips-mode', and can be removed
-  ;; as soon as tabs work properly.
-  (save-excursion
-    (when (and (re-search-forward "^\t" nil t)
-               (y-or-n-p "Sanitize (untabify/re-indent) buffer? "))
-      (mips-indent-region (point-min) (point-max)))))
 
-;;;;;;;;;;;;;;;;;
-;; INDENTATION ;;
-;;;;;;;;;;;;;;;;;
+;;
+;;; Indentation
+
 (defvar mips-line-re
   (concat
    "\\(?:[ \t]*\\)?\\([a-zA-Z0-9_]*:\\)?"      ;; label definition
@@ -183,15 +208,15 @@ buffer's file"
 (defvar mips-wp-char '(11 32)
   "A list of integers for whitespace.")
 
-(defun mips-line ()
-  "Return line at point as a string."
-  (thing-at-point 'line t))
+(defun mips-auto-indent ()
+  "Automatically indent the current line, if necessary."
+  (when (and mips-auto-indent
+             (eq major-mode 'mips-mode)
+             (and (stringp (mips-line))
+                  (not (mips-comment-line-p))))
+    (mips-align-all-columns)))
 
-(defun mips-comment-line-p ()
-  "Return non-nil if line at point is comment-only."
-  (string-match-p mips-comment-line-re (mips-line)))
-
-(defun mips-pad-rxg (column group)
+(defun mips--pad-rxg (column group)
   "Match a MIPS assembly statement using `mips-line-re'.
 
 Will trim, pad, or backward-delete string segment in matching group GROUP until
@@ -213,6 +238,14 @@ COLUMN."
                 (while (memq (char-after) mips-wp-char)
                   (delete-char 1))))))))))
 
+(defun mips-align-all-columns ()
+  "Align each column of a MIPS statement line."
+  (save-mark-and-excursion
+   (mips--pad-rxg mips-baseline-column 1)
+   (mips--pad-rxg mips-operator-column 2)
+   (mips--pad-rxg mips-operands-column 3)
+   (mips--pad-rxg mips-comments-column 4)))
+
 (defun mips-indent-line (&optional suppress-hook)
   "Indent MIPS assembly line at point and run hook.
 
@@ -227,14 +260,6 @@ If SUPPRESS-HOOK, don't trigger `mips-after-indent-hook'."
       (unless suppress-hook
         (when (and mips-after-indent-hook (string= line-before-indent (mips-line)))
           (funcall mips-after-indent-hook))))))
-
-(defun mips-align-all-columns ()
-  "Align each column of a MIPS statement line."
-  (save-mark-and-excursion
-   (mips-pad-rxg mips-baseline-column 1)
-   (mips-pad-rxg mips-operator-column 2)
-   (mips-pad-rxg mips-operands-column 3)
-   (mips-pad-rxg mips-comments-column 4)))
 
 (defun mips-indent-region (start end)
   "Indent MIPS statements between START and END."
@@ -251,14 +276,6 @@ If SUPPRESS-HOOK, don't trigger `mips-after-indent-hook'."
         (funcall indent-line-function t)
         (forward-line)))
     (delete-trailing-whitespace start end)))
-
-(defun mips-auto-indent ()
-  "Automatically indent the current line, if necessary."
-  (when (and mips-auto-indent
-             (eq major-mode 'mips-mode)
-             (and (stringp (mips-line))
-                  (not (mips-comment-line-p))))
-    (mips-align-all-columns)))
 
 (defun mips-dedent ()
   "Dedent line to the baseline."
@@ -295,9 +312,9 @@ If SUPPRESS-HOOK, don't trigger `mips-after-indent-hook'."
   "Move point to the next \"significant\" column."
   (mips--cycle #'move-to-column t))
 
-;;;;;;;;;;;;;
-;; FONTIFY ;;
-;;;;;;;;;;;;;
+
+;;
+;;; Font-lock
 
 (defvar mips-font-lock-keywords
   '( ;; Arithmetic insturctions
@@ -357,9 +374,9 @@ If SUPPRESS-HOOK, don't trigger `mips-after-indent-hook'."
      ;; special characters
      (":\\|,\\|;\\|{\\|}\\|=>\\|@\\|\\$\\|=" . font-lock-builtin-face))))
 
-;;;;;;;;;;
-;; MODE ;;
-;;;;;;;;;;
+
+;;
+;;; Major mode
 
 (defvar mips-mode-map
   (let ((map (make-sparse-keymap)))
