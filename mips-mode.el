@@ -83,10 +83,6 @@
   "If non-nil, columns are aligned automatically during typing."
   :tag "Indent automatically."
   :group 'mips
-  :set (lambda (s v)
-         (set-default s v)
-         (if v (add-hook 'post-command-hook #'mips-auto-indent)
-             (remove-hook 'post-command--hook #'mips-auto-indent)))
   :type 'boolean)
 
 (defun mips--interpreter-buffer-name ()
@@ -388,7 +384,8 @@ If SUPPRESS-HOOK, don't trigger `mips-after-indent-hook'."
     (setq-local tab-width mips-tab-width))
   (mips-sanitize-buffer)
   (modify-syntax-entry ?#  "< b" mips-mode-syntax-table)
-  (modify-syntax-entry ?\n "> b" mips-mode-syntax-table))
+  (modify-syntax-entry ?\n "> b" mips-mode-syntax-table)
+  (add-hook 'post-command-hook #'mips-auto-indent nil t))
 
 ;;;###autoload
 (add-to-list 'auto-mode-alist '("\\.mips\\'" . mips-mode))
