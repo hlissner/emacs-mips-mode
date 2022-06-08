@@ -93,12 +93,13 @@ to this column."
   "Return a buffer name for the preferred mips interpreter"
   (format "*%s*" mips-interpreter))
 
-(defun mips--interpreter-file-arg ()
+(defun mips--interpreter-file-args (file)
   "Return the appropriate argument to accept a file for the
 current mips interpreter"
-  (if (equal mips-interpreter "spim")
-      "-file"
-    ""))
+  (delq
+   nil (list (if (equal (file-name-nondirectory mips-interpreter) "spim")
+                 "-file")
+             file)))
 
 (defun mips--last-label-line ()
   "Returns the line of the last label"
@@ -134,9 +135,9 @@ open the current buffer's file"
   (let ((file (or filename (buffer-file-name))))
     (when (buffer-live-p (get-buffer (mips--interpreter-buffer-name)))
       (kill-buffer (mips--interpreter-buffer-name)))
-    (start-process mips-interpreter
-                   (mips--interpreter-buffer-name)
-                   mips-interpreter (mips--interpreter-file-arg) file))
+    (apply #'start-process mips-interpreter
+           (mips--interpreter-buffer-name)
+           mips-interpreter (mips--interpreter-file-args file)))
   (pop-to-buffer (mips--interpreter-buffer-name))
   (read-only-mode t)
   (help-mode))
