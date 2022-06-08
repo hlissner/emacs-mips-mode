@@ -1,4 +1,4 @@
-;;; mips-mode.el --- Major-mode for MIPS assembly
+;;; mips-mode.el --- Major-mode for MIPS assembly -*- lexical-binding: t; -*-
 ;;
 ;; Copyright (C) 2016-2022 Henrik Lissner
 ;;
@@ -9,6 +9,7 @@
 ;; Version: 1.1.3
 ;; Keywords: languages mips assembly
 ;; Homepage: https://github.com/hlissner/emacs-mips-mode
+;; Package-Requires: ((emacs "25.1"))
 ;;
 ;; This file is not part of GNU Emacs.
 ;;
@@ -52,18 +53,17 @@
   :type 'integer)
 
 (defcustom mips-operands-column tab-width
-  "Operands such as registers and label references are indented
-to this column."
+  "Indent operands (like registers and label references) to this column."
   :tag "Operands column."
   :group 'mips
-  :initialize (lambda (s v) (set-default s (+ 4 (* 2 mips-operator-column))))
+  :initialize (lambda (s _v) (set-default s (+ 4 (* 2 mips-operator-column))))
   :type 'integer)
 
 (defcustom mips-comments-column 30
   "Comments are indented to this column."
   :tag "Comment column."
   :group 'mips
-  :initialize (lambda (s v) (set-default s (+ 20 mips-operands-column)))
+  :initialize (lambda (s _v) (set-default s (+ 20 mips-operands-column)))
   :type 'integer)
 
 (defcustom mips-after-indent-hook #'mips-cycle-point
@@ -90,28 +90,28 @@ to this column."
   :type 'boolean)
 
 (defun mips--interpreter-buffer-name ()
-  "Return a buffer name for the preferred mips interpreter"
+  "Return a buffer name for the preferred mips interpreter."
   (format "*%s*" mips-interpreter))
 
 (defun mips--interpreter-file-args (file)
-  "Return the appropriate argument to accept a file for the
-current mips interpreter"
+  "Return the appropriate arguments to accept a FILE argument.
+
+Depends on the value of `mips-interpreter'."
   (delq
    nil (list (if (equal (file-name-nondirectory mips-interpreter) "spim")
                  "-file")
              file)))
 
 (defun mips--last-label-line ()
-  "Returns the line of the last label"
+  "Return the line of the last label."
   (save-excursion
-    (previous-line)
+    (forward-line -1)
     (end-of-line)
     (re-search-backward "^[a-zA-Z0-9_]*:")
     (line-number-at-pos)))
 
 (defun mips-run-buffer ()
-  "Run the current buffer in a mips interpreter, and display the
-output in another window"
+  "Run current buffer through `mips-interpreter' and display output in a popup."
   (interactive)
   (let ((tmp-file (make-temp-file "mips-" nil (format "-%d-%s" (emacs-pid) (file-name-base (buffer-file-name))))))
     (write-region (point-min) (point-max) tmp-file nil nil nil nil)
@@ -119,36 +119,37 @@ output in another window"
         (mips-run-file tmp-file)
       (delete-file tmp-file))))
 
-(defun mips-run-region ()
-  "Run the current region in a mips interpreter, and display the
-output in another window"
-  (interactive)
+(defun mips-run-region (beg end)
+  "Run selection through `mips-interpreter' and display output in popup.
+
+BEG and END are buffer positions."
+  (interactive "r")
   (let ((tmp-file (make-temp-file "mips-" nil (format "-%d-%s" (emacs-pid) (file-name-base (buffer-file-name))))))
     (write-region (region-beginning) (region-end) tmp-file nil nil nil nil)
     (unwind-protect
         (mips-run-file tmp-file)
       (delete-file tmp-file))))
 
-(defun mips-run-file (&optional filename)
-  "Run the file in a mips interpreter, and display the output in another window.
-The interpreter will open filename. If filename is nil, it will
-open the current buffer's file"
-  (interactive)
-  (let ((file (or filename (buffer-file-name))))
-    (when (buffer-live-p (get-buffer (mips--interpreter-buffer-name)))
-      (kill-buffer (mips--interpreter-buffer-name)))
-    (apply #'start-process mips-interpreter
-           (mips--interpreter-buffer-name)
-           mips-interpreter (mips--interpreter-file-args file)))
-  (pop-to-buffer (mips--interpreter-buffer-name))
-  (read-only-mode t)
-  (help-mode))
+(defun mips-run-file (&optional file)
+  "Run FILE in a mips interpreter and display output in another window.
+
+The interpreter will open FILE. If FILE is nil, it will open the current
+buffer's file"
+  (interactive (list (buffer-file-name)))
+  (when (buffer-live-p (get-buffer (mips--interpreter-buffer-name)))
+    (kill-buffer (mips--interpreter-buffer-name)))
+  (apply #'start-process mips-interpreter
+         (mips--interpreter-buffer-name)
+         mips-interpreter (mips--interpreter-file-args file))
+  (with-current-buffer (pop-to-buffer (mips--interpreter-buffer-name))
+    (read-only-mode t)
+    (help-mode)))
 
 (defun mips-goto-label (label)
   "Jump to the label entitled LABEL."
   (interactive "sGo to Label: ")
   (let ((orig-pt (point)))
-    (beginning-of-buffer)
+    (goto-char (point-min))
     (unless (re-search-forward (format "[ \t]*%s:" label))
       (goto-char orig-pt))))
 
@@ -190,30 +191,35 @@ open the current buffer's file"
   (thing-at-point 'line t))
 
 (defun mips-comment-line-p ()
-  "Return true if line at point is comment-only."
+  "Return non-nil if line at point is comment-only."
   (string-match-p mips-comment-line-re (mips-line)))
 
 (defun mips-pad-rxg (column group)
-  "Match a MIPS assembly statement using `mips-line-re' and trim,
-pad or backward-delete string segment in matching group GROUP
-until COLUMN."
-  (string-match mips-line-re (mips-line))
-  (when (wholenump (match-beginning group))
-    (move-to-column (match-beginning group))
-    (when (< (current-column) (match-end group))
-      (while (/= (current-column) column)
-        (if (< (current-column) column)
-          (insert mips-indent-character)
-          (if (member (preceding-char) mips-wp-char)
-            (delete-backward-char 1)
-            (progn (message "Bumped into a wall at column %s!" (current-column))
-                   (insert mips-indent-character) ;; pad one whitespace
-                   (move-to-column column t)      ;; and bail out forward.
-                   (while (member (char-after) mips-wp-char)
-                     (delete-forward-char 1)))))))))
+  "Match a MIPS assembly statement using `mips-line-re'.
+
+Will trim, pad, or backward-delete string segment in matching group GROUP until
+COLUMN."
+  (save-match-data
+    (string-match mips-line-re (mips-line))
+    (when (wholenump (match-beginning group))
+      (move-to-column (match-beginning group))
+      (let ((col (current-column)))
+        (when (< col (match-end group))
+          (while (/= col column)
+            (if (< col column)
+                (insert mips-indent-character)
+              (if (member (preceding-char) mips-wp-char)
+                  (delete-char -1)
+                (message "Bumped into a wall at column %s!" col)
+                (insert mips-indent-character) ;; pad one whitespace
+                (move-to-column column t)      ;; and bail out forward.
+                (while (memq (char-after) mips-wp-char)
+                  (delete-char 1))))))))))
 
 (defun mips-indent-line (&optional suppress-hook)
-  "Indent MIPS assembly line at point and run hook."
+  "Indent MIPS assembly line at point and run hook.
+
+If SUPPRESS-HOOK, don't trigger `mips-after-indent-hook'."
   (interactive)
   (when (eobp) (open-line 1))
   (let ((line-before-indent (mips-line)))
@@ -222,7 +228,7 @@ until COLUMN."
         (mips-cycle-indent))
       (mips-align-all-columns)
       (unless suppress-hook
-        (when (and mips-after-indent-hook (string-equal line-before-indent (mips-line)))
+        (when (and mips-after-indent-hook (string= line-before-indent (mips-line)))
           (funcall mips-after-indent-hook))))))
 
 (defun mips-align-all-columns ()
@@ -234,7 +240,7 @@ until COLUMN."
    (mips-pad-rxg mips-comments-column 4)))
 
 (defun mips-indent-region (start end)
-  "Indent a region consisting of MIPS assembly statements."
+  "Indent MIPS statements between START and END."
   (interactive)
   (deactivate-mark)
   (let ((first-line (line-number-at-pos start))
@@ -242,14 +248,15 @@ until COLUMN."
     (untabify (line-beginning-position first-line)
               (line-end-position last-line))
     (save-mark-and-excursion
-     (goto-line first-line)
-     (while (and (<= (line-number-at-pos (point)) last-line)
-                 (not (eobp)))
-       (funcall indent-line-function t)
-       (forward-line)))
+      (goto-char start)
+      (while (and (<= (line-number-at-pos (point)) last-line)
+                  (not (eobp)))
+        (funcall indent-line-function t)
+        (forward-line)))
     (delete-trailing-whitespace start end)))
 
 (defun mips-auto-indent ()
+  "Automatically indent the current line, if necessary."
   (when (and mips-auto-indent
              (eq major-mode 'mips-mode)
              (and (stringp (mips-line))
@@ -268,27 +275,28 @@ until COLUMN."
   (cond ((mips-comment-line-p)
          (open-line 1)
          (forward-line))
-        (t (mips-indent-line t)
-           (newline)
-           (mips-indent-line)
-           (back-to-indentation))))
+        ((mips-indent-line t)
+         (newline)
+         (mips-indent-line)
+         (back-to-indentation))))
 
-(defun mips-cycle (func &rest args)
+(defun mips--cycle (func &rest args)
+  "Cycle between indent markers on the current line."
   (cond ((or (bolp) (< (current-column) mips-operator-column))
          (apply func mips-operator-column args))
         ((< (current-column) mips-operands-column)
          (apply func mips-operands-column args))
         ((< (current-column) mips-comments-column)
          (apply func mips-comments-column args))
-        (t (apply func mips-baseline-column args))))
+        ((apply func mips-baseline-column args))))
 
 (defun mips-cycle-indent ()
   "Move indentation to the next \"significant\" column."
-  (mips-cycle #'indent-line-to))
+  (mips--cycle #'indent-line-to))
 
 (defun mips-cycle-point ()
   "Move point to the next \"significant\" column."
-  (mips-cycle #'move-to-column t))
+  (mips--cycle #'move-to-column t))
 
 ;;;;;;;;;;;;;
 ;; FONTIFY ;;
@@ -375,7 +383,8 @@ until COLUMN."
   (setq-local indent-line-function #'mips-indent-line)
   (setq-local indent-region-function #'mips-indent-region)
   (setq-local indent-tabs-mode nil)
-  (setq-local tab-width (or mips-tab-width tab-width))
+  (when mips-tab-width
+    (setq-local tab-width mips-tab-width))
   (mips-sanitize-buffer)
   (modify-syntax-entry ?#  "< b" mips-mode-syntax-table)
   (modify-syntax-entry ?\n "> b" mips-mode-syntax-table))
