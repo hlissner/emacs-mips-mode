@@ -113,19 +113,21 @@ current mips interpreter"
   "Run the current buffer in a mips interpreter, and display the
 output in another window"
   (interactive)
-  (let ((tmp-file (format "/tmp/mips-%s" (file-name-base))))
+  (let ((tmp-file (make-temp-file "mips-" nil (format "-%d-%s" (emacs-pid) (file-name-base (buffer-file-name))))))
     (write-region (point-min) (point-max) tmp-file nil nil nil nil)
-    (mips-run-file tmp-file)
-    (delete-file tmp-file)))
+    (unwind-protect
+        (mips-run-file tmp-file)
+      (delete-file tmp-file))))
 
 (defun mips-run-region ()
   "Run the current region in a mips interpreter, and display the
 output in another window"
   (interactive)
-  (let ((tmp-file (format "/tmp/mips-%s" (file-name-base))))
+  (let ((tmp-file (make-temp-file "mips-" nil (format "-%d-%s" (emacs-pid) (file-name-base (buffer-file-name))))))
     (write-region (region-beginning) (region-end) tmp-file nil nil nil nil)
-    (mips-run-file tmp-file)
-    (delete-file tmp-file)))
+    (unwind-protect
+        (mips-run-file tmp-file)
+      (delete-file tmp-file))))
 
 (defun mips-run-file (&optional filename)
   "Run the file in a mips interpreter, and display the output in another window.
