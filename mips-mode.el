@@ -98,7 +98,8 @@
 
 Depends on the value of `mips-interpreter'."
   (delq
-   nil (list (if (equal (file-name-nondirectory mips-interpreter) "spim")
+   nil (list (if (member (downcase (file-name-base mips-interpreter))
+                         '("spim" "qtspim"))
                  "-file")
              file)))
 
