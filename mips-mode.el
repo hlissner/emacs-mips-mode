@@ -185,6 +185,32 @@ buffer's file"
     (unless (re-search-forward (format "[ \t]*%s:" label))
       (goto-char orig-pt))))
 
+(defun mips-next-label ()
+  "Jump to next label after point."
+  (interactive)
+  (let ((orig-pt (point)))
+    (condition-case _
+        (save-match-data
+          (goto-char (point-at-eol))
+          (re-search-forward "^[ \t]*[a-zA-Z0-9_.]+:")
+          (goto-char (match-beginning 0)))
+      (error
+       (goto-char orig-pt)
+       (user-error "No next label")))))
+
+(defun mips-previous-label ()
+  "Jump to previous label before point."
+  (interactive)
+  (let ((orig-pt (point)))
+    (condition-case _
+        (save-match-data
+          (goto-char (point-at-bol))
+          (re-search-backward "^[ \t]*[a-zA-Z0-9_]+:")
+          (goto-char (match-beginning 0)))
+      (error
+       (goto-char orig-pt)
+       (user-error "No previous label")))))
+
 (defun mips-goto-label-at-cursor ()
   "Jump to the label that matches the symbol at point."
   (interactive)
@@ -392,6 +418,8 @@ See `imenu-generic-expression' for details.")
     (define-key map (kbd "C-c C-c")   #'mips-run-buffer)
     (define-key map (kbd "C-c C-r")   #'mips-run-region)
     (define-key map (kbd "C-c C-l")   #'mips-goto-label-at-cursor)
+    (define-key map (kbd "M-n")       #'mips-next-label)
+    (define-key map (kbd "M-p")       #'mips-previous-label)
     map)
   "Keymap for `mips-mode'.")
 
