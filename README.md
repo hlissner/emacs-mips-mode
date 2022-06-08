@@ -22,9 +22,15 @@ mips-mode is available on MELPA. To install:
 
 Alternatively, for use-package users:
 
-``` emacs-lisp
+```emacs-lisp
 (use-package mips-mode :mode "\\.mips$")
 ```
+
+As for [Doom Emacs](https://git.doomemacs.org) users:
+
+1. Add `(package! mips-mode)` to `$DOOMDIR/packages.el`.
+2. Run `$ doom sync`.
+3. Restart Emacs.
 
 ## Usage
 
