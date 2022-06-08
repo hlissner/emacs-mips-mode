@@ -1,6 +1,6 @@
 ;;; mips-mode.el --- Major-mode for MIPS assembly
 ;;
-;; Copyright (C) 2016-2018 Henrik Lissner
+;; Copyright (C) 2016-2022 Henrik Lissner
 ;;
 ;; Author: Henrik Lissner <http://github/hlissner>
 ;; Maintainer: Henrik Lissner <contact@henrik.io>
