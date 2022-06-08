@@ -344,40 +344,68 @@ If SUPPRESS-HOOK, don't trigger `mips-after-indent-hook'."
 
 (defvar mips-font-lock-keywords
   '( ;; Arithmetic insturctions
-    "add" "sub" "addi" "subi" "addu" "addiu"
+    "add" "sub" "subu" "addi" "subi" "addu" "addiu"
     ;; Multiplication/division
-    "mult" "div" "rem" "multu" "divu" "mfhi" "mflo" "mul" "mulu" "mulo" "mulou"
+    "mul" "mult" "multu" "mulu" "madd" "maddu" "msub" "msubu" "div" "divu"
     ;; Bitwise operations
-    "not" "and" "or" "nor" "xor" "andi" "ori" "xori"
+    "and" "or" "nor" "xor" "andi" "ori" "xori" "clo" "clz"
     ;; Shifts
-    "sll" "srl" "sra" "sllv" "srlv" "srav"
+    "sll" "srl" "sllv" "srlv" "sra" "srav"
     ;; Comparisons
-    "seq" "sne" "sgt" "sgtu" "sge" "sgeu" "slt" "sltu" "slti" "sltiu"
-    ;; Jump/branch
-    "j" "jal" "jr" "jalr" "beq" "bne" "syscall"
-    ;; Load/store
-    "lui" "lb" "lbu" "lh" "lhu" "lw" "lwl" "lwr" "sb" "sh" "sw" "swl" "swr"
+    "slt" "sltu" "slti" "sltiu"
+    ;; Move data
+    "mfhi" "mthi" "mflo" "mtlo" "movn" "movz" "movf" "movt"
+    ;; Jump
+    "j" "jal" "jalr" "jr"
+    ;; branch
+    "bc1f" "bc1t" "beq" "bgez" "bgezal" "bgtz" "blez" "bltzal" "bltz" "bne"
+    ;; Load
+    "lui" "lb" "lbu" "lh" "lhu" "lw" "lwcl" "lwl" "lwr"
+    ;; Store
+    "sb" "sh" "sw" "swl" "swr" ; coproc: swc1 sdc1
     ;; Concurrent load/store
     "ll" "sc"
     ;; Trap handling
-    "break" "teq" "teqi" "tge" "tgei" "tgeu" "tgeiu" "tlt" "tlti" "tltu" "tltiu" "tne" "tnei" "rfe"
-    ;; Pseudoinstructions
-    "b" "bal" "bge" "bgt" "ble" "blt" "bgeu" "bleu" "bltu" "bgtu" "bgez" "blez" "bgtz"
-    "bltz" "bnez" "beqz" "bltzal" "bgezal" "bgtu" "la" "li" "move" "movz" "movn" "nop" "clear"
-    ;; Deprecated branch-hint pseudoinstructions
-    "beql" "bnel" "bgtzl" "bgezl" "bltzl" "blezl" "bltzall" "bgezall"
-    ;; Floating point instuctions
+    "teq" "teqi" "tne" "tneqi" "tge" "tgeu" "tgei" "tgeiu" "tlt" "tltu" "tlti"
+    "tltiu"
+    ;; Exception / Interrupt
+    "eret" "break" "bop" "syscall"
+    ;;--- Floats -----------------------------------------------------
     ;; Arithmetic
-    "add.s" "add.d" "sub.s" "sub.d" "mul.s" "mul.d" "div.s" "div.d"
+    "add.s" "add.d" "sub.s" "sub.d" "mul.s" "mul.d" "div.s" "div.d" "neg.d"
+    "neg.s"
     ;; Comparison
-    "c.lt.s" "c.lt.d" "c.gt.s" "c.gt.d" "madd.s" "madd.d" "msub.s" "msub.d" "movt.s"
-    "movt.d" "movn.s" "movn.d" "movz.s" "movz.d" "trunc.w.d" "trunc.w.s"
+    "c.e.d" "c.e.s" "c.le.d" "c.le.s" "c.lt.s" "c.lt.d" ; "c.gt.s" "c.gt.d"
+    "madd.s" "madd.d" "msub.s" "msub.d"
+    ;; Move Floats
+    "mov.d" "move.s" "movf.d" "movf.s" "movt.d" "movt.s" "movn.d" "movn.s"
+    "movnzd" "movz.s" "movz.d"
     ;; Conversion
-    "cvt.s.d" "cvt.d.s"
+    "cvt.d.s" "cvt.d.w" "cvt.s.d" "cvt.s.w" "cvt.w.d" "cvt.w.s" "trunc.w.d"
+    "trunc.w.s"
     ;; Math
-    "abs.s" "abs.d" "sqrt.s" "sqrt.d"
-    ;; Load-store
-    "l.s" "l.d" "s.s" "s.d"))
+    "abs.s" "abs.d" "sqrt.s" "sqrt.d" "ceil.w.d" "ceil.w.s" "floor.w.d"
+    "floor.w.s" "round.w.d" "round.w.s"))
+
+(defvar mips-font-lock-pseudoinstructions
+  '(;; Arithmetic & logical
+    "rem" "remu" "mulo" "mulou" "abs" "neg" "negu" "not" "rol" "ror"
+    ;; branches
+    "b" "beqz" "bge" "bgeu" "bgt" "bgtu" "ble" "bleu" "blt" "bltu" "bnez"
+    ;; loads
+    "la" "li" "ld" "ulh" "ulhu" "ulw"
+    ;; Store
+    "sd" "ush" "usw"
+    ;; move
+    "move" ; coproc: "mfc1.d"
+    ;; comparisons
+    "sgt" "sgtu" "sge" "sgeu" "sle" "sleu" "sne" "seq"
+    ;;--- Floats -----------------------------------------------------
+    ;; load-store
+    "l.d" "l.s" "s.d" "s.s"))
+
+(defvar mips-font-lock-deprecated
+  '("beql" "bnel" "bgtzl" "bgezl" "bltzl" "blezl" "bltzall" "bgezall"))
 
 (defvar mips-font-lock-directives
   '(".align" ".ascii" ".asciiz" ".byte" ".data" ".double" ".extern" ".float"
@@ -391,8 +419,10 @@ If SUPPRESS-HOOK, don't trigger `mips-after-indent-hook'."
      ;; labels
      ("[a-zA-Z_0-9]*:" . font-lock-function-name-face)
      (,(regexp-opt mips-font-lock-keywords 'words) . font-lock-keyword-face)
-     ;; coprocessor load-store instructions
-     ("[sl]wc[1-9]" . font-lock-keyword-face)
+     (,(regexp-opt mips-font-lock-pseudoinstructions 'words) . font-lock-variable-name-face)
+     (,(regexp-opt mips-font-lock-deprecated 'words) . font-lock-warning-face)
+     ;; coprocessor load-store / move from-to instructions
+     ("[slm][ftwd]c[0-9]\\(?:[.]d\\)?" . font-lock-keyword-face)  ; "mfc0" "mfc1" "mtc0" "mtc1"
      (,(regexp-opt mips-font-lock-directives) . font-lock-preprocessor-face)
      ;; registers
      ("$\\(f?[0-2][0-9]\\|f?3[01]\\|[ft]?[0-9]\\|[vk][01]\\|a[0-3]\\|s[0-7]\\|[gsf]p\\|ra\\|at\\|zero\\)" . font-lock-type-face)
